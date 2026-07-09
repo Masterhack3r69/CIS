@@ -16,6 +16,8 @@ Spring Boot 3 / Java 21 backend scaffold for the college SIS described in `PROJE
 - Academic setup entities and CRUD APIs for departments, programs, courses, faculty, rooms, school years, semesters, and sections
 - Curriculum management APIs with version activation, course assignment, prerequisites, corequisites, and checklist totals
 - Student profile APIs with program/curriculum assignment, nested profile details, document upload metadata, verification, and student search
+- Schedule management APIs with class meetings, filtering, soft archive, and room/faculty/section conflict checking
+- Enrollment management APIs with draft enrollment, schedule selection, validation, confirmation, cancellation, and status history
 - Audit/report tracking tables reserved for later workflows
 
 ## Local Run
@@ -118,6 +120,27 @@ Students:
 - `PATCH /api/v1/students/{id}/documents/{documentId}/verify`
 - `GET /api/v1/students/{id}/academic-records`
 
+Schedules:
+
+- `GET /api/v1/schedules`
+- `POST /api/v1/schedules`
+- `GET /api/v1/schedules/{id}`
+- `PUT /api/v1/schedules/{id}`
+- `DELETE /api/v1/schedules/{id}`
+- `POST /api/v1/schedules/check-conflict`
+
+Enrollments:
+
+- `GET /api/v1/enrollments`
+- `POST /api/v1/enrollments`
+- `GET /api/v1/enrollments/{id}`
+- `PUT /api/v1/enrollments/{id}`
+- `POST /api/v1/enrollments/{id}/subjects`
+- `DELETE /api/v1/enrollments/{id}/subjects/{subjectId}`
+- `POST /api/v1/enrollments/{id}/validate`
+- `POST /api/v1/enrollments/{id}/confirm`
+- `POST /api/v1/enrollments/{id}/cancel`
+
 ## Verify
 
 ```powershell
@@ -126,6 +149,6 @@ mvn test
 
 ## Next Implementation Slice
 
-1. Implement schedule and conflict-check APIs.
-2. Implement enrollment and assessment workflows.
-3. Implement grade recording and academic record updates.
+1. Implement fee setup and assessment generation.
+2. Implement grade recording and academic record updates.
+3. Implement reports and PDF generation.
