@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: sis_db
+      POSTGRES_USER: sis_user
+      POSTGRES_PASSWORD: change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sis_user -d sis_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: sis_db
+      DB_USERNAME: sis_user
+      DB_PASSWORD: change_me
+      JWT_SECRET: change_me_change_me_change_me_change_me_change_me_change_me
+      JWT_ACCESS_EXPIRATION: 900
+      JWT_REFRESH_EXPIRATION: 604800
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
