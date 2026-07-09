@@ -639,24 +639,45 @@ cd frontend
 npm run build
 ```
 
+### 11. Registrar and Enrollment Frontend
+
+The first registrar frontend slice has now been implemented in the same Vite app.
+
+Implemented screens:
+
+- Student list/search.
+- Student create/update with core personal, contact, and academic fields.
+- Student status activation/deactivation.
+- Student document upload and verification/rejection.
+- Student academic-record read view.
+- Enrollment list/status filter.
+- Enrollment draft creation.
+- Enrollment subject add/drop from active schedules.
+- Enrollment validation, confirmation, cancellation, and assessment generation actions.
+
+Backend setup check:
+
+- No additional setup APIs were required for this slice.
+- Existing setup, curriculum, student, schedule, enrollment, assessment, and academic-record endpoints were sufficient.
+
 ## What To Build Next
 
-The recommended next slice is the next frontend workflow after admin setup.
+The recommended next slice is the next frontend workflow after registrar/enrollment.
 
 Why this is next:
 
-- Admin setup data can now be created through the UI.
-- Registrar, schedule, enrollment, cashier, and faculty workflows need their own screens before the system feels end-to-end usable.
+- Admin setup and first registrar/enrollment data can now be created through the UI.
+- Schedule, cashier, faculty grade encoding, and reporting workflows still need their own screens before the system feels end-to-end usable.
 - Building one workflow at a time keeps the frontend aligned with the existing backend modules.
 
-### Next Module 1: Registrar and Enrollment Frontend
+### Next Module 1: Schedule Management Frontend
 
 Recommended first screens:
 
-- Student list, create, detail, and status update.
-- Student documents and verification.
-- Enrollment draft, subject selection, validation, confirmation, cancellation, and assessment generation.
-- Student academic records read view.
+- Schedule list/search/filter.
+- Create/update schedules with course, faculty, room, section, school year, semester, capacity, and meetings.
+- Conflict check before save.
+- Archive inactive schedules.
 
 Suggested frontend stack:
 
@@ -696,7 +717,7 @@ Recommended first audit events:
 
 ## Current Known Limitations
 
-- Admin setup frontend exists, but registrar, cashier, faculty, student portal, and reporting screens are not built yet.
+- Admin setup and first registrar/enrollment frontend screens exist, but schedule management, cashier, faculty, student portal, and reporting screens are not built yet.
 - Audit logs table exists, but no audit service writes events yet.
 - Document storage is local filesystem only.
 - Redis is present in Docker Compose but not meaningfully used yet.
@@ -723,10 +744,10 @@ Current completed modules:
 - Grade recording and academic record updates
 - Backend readiness for admin setup frontend
 - Admin setup frontend
+- Registrar and enrollment frontend
 
 Next task:
-Implement the next frontend workflow, starting with registrar/student enrollment screens.
+Implement the next frontend workflow, starting with schedule management screens.
 
 Please create a plan first if we are in Plan Mode, otherwise implement it directly, run backend tests, run the frontend build, start the backend, start the frontend dev server, and manually verify the new screens.
 ```
-

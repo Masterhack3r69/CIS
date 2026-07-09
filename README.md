@@ -22,6 +22,7 @@ Spring Boot 3 / Java 21 backend scaffold for the college SIS described in `PROJE
 - Grade recording APIs with faculty-owned encoding, review, approval, locking, and academic record updates
 - Backend readiness APIs for admin setup frontend, including faculty-user linking and user/role management
 - React/Vite admin setup frontend for users, departments, programs, courses, faculty, rooms, school years, semesters, and sections
+- Registrar frontend screens for student profiles, documents, academic records, enrollment drafts, subject selection, validation, confirmation, cancellation, and assessment generation
 - Audit/report tracking tables reserved for later workflows
 
 ## Local Run
@@ -198,6 +199,6 @@ npm run build
 
 ## Next Implementation Slice
 
-1. Build the next frontend workflow, starting with registrar setup/enrollment screens or schedule management.
+1. Build the next frontend workflow, starting with schedule management or cashier/assessment screens.
 2. Implement reports and PDF generation, starting with enrollment, assessment, class list, and grade slip forms.
 3. Add audit logging for sensitive workflows.
