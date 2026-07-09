@@ -2,6 +2,9 @@ package com.school.sis.enrollment.repository;
 
 import com.school.sis.enrollment.entity.EnrollmentSubject;
 import com.school.sis.enrollment.entity.EnrollmentSubjectStatus;
+import com.school.sis.enrollment.entity.EnrollmentStatus;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,4 +15,26 @@ public interface EnrollmentSubjectRepository extends JpaRepository<EnrollmentSub
     Optional<EnrollmentSubject> findByIdAndEnrollmentId(UUID id, UUID enrollmentId);
     boolean existsByEnrollmentIdAndClassScheduleIdAndStatus(UUID enrollmentId, UUID classScheduleId, EnrollmentSubjectStatus status);
     List<EnrollmentSubject> findByEnrollmentIdOrderByCreatedAtAsc(UUID enrollmentId);
+
+    @Query("""
+            select subject from EnrollmentSubject subject
+            join fetch subject.enrollment enrollment
+            join fetch enrollment.student
+            join fetch enrollment.program
+            join fetch subject.classSchedule schedule
+            join fetch schedule.course
+            join fetch schedule.section
+            join fetch schedule.faculty
+            join fetch schedule.schoolYear
+            join fetch schedule.semester
+            where schedule.id = :scheduleId
+              and subject.status = :subjectStatus
+              and enrollment.status = :enrollmentStatus
+            order by enrollment.student.lastName asc, enrollment.student.firstName asc
+            """)
+    List<EnrollmentSubject> findConfirmedActiveSubjectsBySchedule(
+            @Param("scheduleId") UUID scheduleId,
+            @Param("subjectStatus") EnrollmentSubjectStatus subjectStatus,
+            @Param("enrollmentStatus") EnrollmentStatus enrollmentStatus
+    );
 }

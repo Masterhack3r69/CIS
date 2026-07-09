@@ -8,6 +8,7 @@ import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.curriculum.entity.Curriculum;
 import com.school.sis.curriculum.repository.CurriculumRepository;
+import com.school.sis.grade.service.GradeService;
 import com.school.sis.setup.entity.Program;
 import com.school.sis.setup.entity.Section;
 import com.school.sis.setup.repository.ProgramRepository;
@@ -70,6 +71,7 @@ public class StudentService {
     private final CurriculumRepository curriculumRepository;
     private final SectionRepository sectionRepository;
     private final UserRepository userRepository;
+    private final GradeService gradeService;
     private final Path documentRoot;
 
     public StudentService(
@@ -82,6 +84,7 @@ public class StudentService {
             CurriculumRepository curriculumRepository,
             SectionRepository sectionRepository,
             UserRepository userRepository,
+            GradeService gradeService,
             @Value("${sis.storage.document-root:uploads/documents}") String documentRoot
     ) {
         this.studentRepository = studentRepository;
@@ -93,6 +96,7 @@ public class StudentService {
         this.curriculumRepository = curriculumRepository;
         this.sectionRepository = sectionRepository;
         this.userRepository = userRepository;
+        this.gradeService = gradeService;
         this.documentRoot = Paths.get(documentRoot).toAbsolutePath().normalize();
     }
 
@@ -201,7 +205,7 @@ public class StudentService {
                 student.getProgram().getProgramCode(),
                 student.getCurriculum().getId(),
                 student.getCurriculum().getCurriculumCode(),
-                List.of()
+                gradeService.academicRecords(student.getId())
         );
     }
 

@@ -1,5 +1,6 @@
 package com.school.sis.setup.entity;
 
+import com.school.sis.auth.entity.User;
 import com.school.sis.common.audit.AuditableEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,6 +41,10 @@ public class Faculty extends AuditableEntity {
     @Column(name = "contact_number")
     private String contactNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)
+    private User user;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
@@ -78,6 +83,8 @@ public class Faculty extends AuditableEntity {
     public void setEmail(String email) { this.email = email; }
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
     public Department getDepartment() { return department; }
     public void setDepartment(Department department) { this.department = department; }
     public EmploymentStatus getEmploymentStatus() { return employmentStatus; }

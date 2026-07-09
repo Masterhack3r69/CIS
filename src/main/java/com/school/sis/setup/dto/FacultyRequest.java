@@ -17,6 +17,7 @@ public record FacultyRequest(
         String suffix,
         @NotBlank @Email String email,
         String contactNumber,
+        UUID userId,
         @NotNull UUID departmentId,
         @NotNull EmploymentStatus employmentStatus,
         @NotNull FacultyType facultyType,

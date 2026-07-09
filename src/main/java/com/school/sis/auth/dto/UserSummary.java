@@ -8,6 +8,7 @@ public record UserSummary(
         String username,
         String email,
         String fullName,
+        boolean active,
         List<String> roles,
         List<String> permissions
 ) {

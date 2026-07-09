@@ -11,6 +11,8 @@ import com.school.sis.enrollment.dto.EnrollmentUpdateRequest;
 import com.school.sis.enrollment.dto.EnrollmentValidationResponse;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
 import com.school.sis.enrollment.service.EnrollmentService;
+import com.school.sis.fee.dto.AssessmentResponse;
+import com.school.sis.fee.service.FeeService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,9 +33,11 @@ import java.util.UUID;
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
+    private final FeeService feeService;
 
-    public EnrollmentController(EnrollmentService enrollmentService) {
+    public EnrollmentController(EnrollmentService enrollmentService, FeeService feeService) {
         this.enrollmentService = enrollmentService;
+        this.feeService = feeService;
     }
 
     @GetMapping
@@ -98,5 +102,11 @@ public class EnrollmentController {
     @PreAuthorize("hasAuthority('ENROLLMENT_APPROVE')")
     public ApiResponse<EnrollmentResponse> cancel(@PathVariable UUID id) {
         return ApiResponse.success("Enrollment cancelled", enrollmentService.cancel(id));
+    }
+
+    @PostMapping("/{id}/generate-assessment")
+    @PreAuthorize("hasAuthority('FEE_MANAGE')")
+    public ApiResponse<AssessmentResponse> generateAssessment(@PathVariable UUID id) {
+        return ApiResponse.success("Assessment generated", feeService.generateAssessment(id));
     }
 }

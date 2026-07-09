@@ -65,6 +65,7 @@ The backend has a working foundation:
 - Role and permission model.
 - BCrypt password hashing.
 - Stateless Spring Security configuration.
+- Minimal user and role management APIs for admin setup.
 
 Auth endpoints:
 
@@ -72,6 +73,15 @@ Auth endpoints:
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/auth/me`
+
+User and role endpoints:
+
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `GET /api/v1/users/{id}`
+- `PUT /api/v1/users/{id}`
+- `PATCH /api/v1/users/{id}/status`
+- `GET /api/v1/roles`
 
 ### 2. Academic Setup Module
 
@@ -95,6 +105,7 @@ Important behavior:
 - Setup records use UUID IDs.
 - Important uniqueness constraints are enforced by the database.
 - Status updates exist where relevant, such as departments, faculty, rooms, sections.
+- Faculty records can optionally link to users for grade encoding ownership.
 
 Academic setup endpoints:
 
@@ -302,11 +313,20 @@ Current migrations:
   - enrollment subject tables
   - enrollment status history tables
   - enrollment view permission grant
+- `V6__fees_and_assessments.sql`
+  - fee setup tables
+  - assessment and assessment item tables
+  - fee view permission grant
+- `V7__grade_recording.sql`
+  - faculty user mapping
+  - grade tables
+  - academic record tables
+  - grade view/review permission grants
 
 Important note:
 
 - Do not edit already-applied migrations for normal feature work.
-- Add new migrations such as `V6__...sql` for the next module.
+- Add new migrations such as `V8__...sql` for the next module.
 
 ## Verified Commands
 
@@ -439,78 +459,213 @@ Verified by automated tests:
 - Cancellation records status history.
 - Prerequisite warnings do not block validation.
 
-## What To Build Next
+### 7. Fees and Assessment Module
 
-The recommended next slice is Fees and Assessment.
+Fees and assessment has now been implemented.
 
-Why this is next:
+Migration:
 
-- Enrollments now exist and can be confirmed.
-- Fee assessment generation can use enrollment subjects and credit-unit totals.
-- Assessment records are needed before cashier workflows and assessment PDFs.
+- `src/main/resources/db/migration/V6__fees_and_assessments.sql`
 
-### Next Module 1: Fees and Assessment
-
-Build next.
-
-Tables:
+Main tables:
 
 - `fee_items`
 - `fee_rules`
 - `assessments`
 - `assessment_items`
-- optional `payments`
 
-Core behavior:
+Main package:
 
-- Manage fee setup.
-- Generate assessment from enrollment subjects.
-- Compute per-unit and fixed fees.
-- Recalculate assessment.
-- Track assessment status.
+- `src/main/java/com/school/sis/fee`
 
-Suggested endpoints:
+Implemented behavior:
+
+- Create/update/list/get fee setup records.
+- Attach active or inactive fee rules to fee items.
+- Support fixed fee rules and per-unit fee rules.
+- Scope fee rules by optional program, school year, semester, and year level.
+- Generate assessments from confirmed enrollments.
+- Snapshot fee code, fee name, rule type, quantity, unit amount, and line amount into assessment items.
+- Prevent duplicate non-void assessments for the same enrollment.
+- Recalculate draft or unpaid assessments from current active fee rules.
+- Block recalculation for paid or void assessments.
+- Track assessment status as `DRAFT`, `UNPAID`, `PAID`, or `VOID`.
+
+Fee permissions:
+
+- `FEE_VIEW`
+- `FEE_MANAGE`
+
+Fee and assessment endpoints:
 
 - `GET /api/v1/fees`
 - `POST /api/v1/fees`
 - `GET /api/v1/fees/{id}`
 - `PUT /api/v1/fees/{id}`
 - `PATCH /api/v1/fees/{id}/status`
+- `POST /api/v1/enrollments/{id}/generate-assessment`
 - `GET /api/v1/assessments`
 - `GET /api/v1/assessments/{id}`
 - `POST /api/v1/assessments/{id}/recalculate`
 - `PATCH /api/v1/assessments/{id}/status`
 
-### Next Module 2: Grade Recording
+Verified by automated tests:
 
-Build after schedules and enrollment.
+- Fee setup with scoped rules works.
+- Confirmed enrollments can generate assessments.
+- Draft enrollments cannot generate assessments.
+- Duplicate active assessments are rejected.
+- Fixed and per-unit fees compute expected totals.
+- Recalculation uses current fee rules.
+- Paid assessments cannot be recalculated or changed.
+- Inactive fee rules are ignored.
 
-Tables:
+### 8. Grade Recording Module
+
+Grade recording has now been implemented.
+
+Migration:
+
+- `src/main/resources/db/migration/V7__grade_recording.sql`
+
+Main tables:
 
 - `grades`
 - `grade_status_history`
-- later: `grade_change_requests`
+- `academic_records`
 
-Core behavior:
+Main package:
 
-- Faculty class list.
-- Grade encoding.
-- Grade submission.
-- Registrar approval.
-- Grade locking.
-- Update academic records when grade is approved/locked.
+- `src/main/java/com/school/sis/grade`
 
-Suggested endpoints:
+Implemented behavior:
+
+- Link faculty records to users through nullable `faculty.user_id`.
+- Encode grades against confirmed enrollment subjects for a class schedule.
+- Enforce assigned faculty user ownership for encode and submit.
+- Validate Philippine numeric grades from `1.00` to `5.00` in `0.25` increments.
+- Support special grades `INC`, `DRP`, `NG`, `W`, and `COND`.
+- Derive grade remarks as passed, failed, incomplete, dropped, no grade, withdrawn, or conditional.
+- Support workflow `ENCODED -> SUBMITTED -> REVIEWED -> APPROVED -> LOCKED`.
+- Require a complete class sheet before submission, review, approval, or locking.
+- Upsert typed academic records on approval and refresh them on lock.
+- Replace the student academic-records placeholder with typed academic record responses.
+
+Grade permissions:
+
+- `GRADE_VIEW`
+- `GRADE_ENCODE`
+- `GRADE_REVIEW`
+- `GRADE_APPROVE`
+
+Grade endpoints:
 
 - `GET /api/v1/grades`
 - `GET /api/v1/grades/class/{scheduleId}`
 - `POST /api/v1/grades/class/{scheduleId}/encode`
 - `POST /api/v1/grades/class/{scheduleId}/submit`
+- `POST /api/v1/grades/class/{scheduleId}/review`
 - `POST /api/v1/grades/class/{scheduleId}/approve`
 - `POST /api/v1/grades/class/{scheduleId}/lock`
 - `GET /api/v1/grades/student/{studentId}`
 
-### Next Module 3: Reports and PDFs
+Verified by automated tests:
+
+- Assigned faculty users can encode and submit grades.
+- Mismatched or unlinked faculty users cannot encode.
+- Invalid grade ranges, increments, and duplicate grade value types are rejected.
+- Failed and special grades derive the expected remarks.
+- Incomplete class sheets cannot be submitted.
+- Review, approval, and lock workflow works.
+- Approval and lock update student academic records.
+- Locked grades cannot be edited.
+- Failed and special grades do not earn units.
+
+### 9. Backend Readiness for Admin Setup Frontend
+
+Backend readiness for the admin setup frontend has now been implemented.
+
+Implemented behavior:
+
+- Added missing setup services/controllers for faculty, rooms, school years, semesters, and sections.
+- Completed faculty-user linking through optional `FacultyRequest.userId`.
+- Exposed linked user data in `FacultyResponse`.
+- Added minimal user management for listing, creating, updating, activating/deactivating, and assigning seeded roles.
+- Added role listing for admin setup screens.
+- Protected user/role management with `USER_MANAGE`.
+
+Verified by automated tests:
+
+- Faculty create/update works with optional user linking.
+- Faculty rejects missing department or user references.
+- Room create/update/status works.
+- School year and semester create/update works.
+- Section create/update/status works and validates references.
+- User create/update/status works with role assignment and BCrypt password hashing.
+- Duplicate usernames and missing roles are rejected.
+
+### 10. Admin Setup Frontend
+
+The admin setup frontend has now been implemented under `frontend/`.
+
+Implemented screens:
+
+- Login and authenticated admin shell.
+- Users with role assignment and active/inactive status toggling.
+- Departments, programs, and courses.
+- Faculty with optional linked user selection.
+- Rooms, school years, semesters, and sections.
+
+Frontend behavior:
+
+- Uses React, TypeScript, and Vite.
+- Stores the JWT session in local storage.
+- Uses the existing `ApiResponse<T>` and `PageResponse<T>` backend shapes.
+- Vite proxies `/api` requests to the backend at `http://localhost:8080`.
+- The setup screens use the real backend APIs added for admin readiness.
+
+Run locally:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Verify frontend build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## What To Build Next
+
+The recommended next slice is the next frontend workflow after admin setup.
+
+Why this is next:
+
+- Admin setup data can now be created through the UI.
+- Registrar, schedule, enrollment, cashier, and faculty workflows need their own screens before the system feels end-to-end usable.
+- Building one workflow at a time keeps the frontend aligned with the existing backend modules.
+
+### Next Module 1: Registrar and Enrollment Frontend
+
+Recommended first screens:
+
+- Student list, create, detail, and status update.
+- Student documents and verification.
+- Enrollment draft, subject selection, validation, confirmation, cancellation, and assessment generation.
+- Student academic records read view.
+
+Suggested frontend stack:
+
+- React with TypeScript.
+- Vite.
+- Fetch is currently used directly; TanStack Query can be introduced when workflows become more stateful.
+- React Hook Form and Zod can be added when form validation becomes heavier.
+
+### Next Module 2: Reports and PDFs
 
 Build after source workflows are stable.
 
@@ -529,12 +684,19 @@ PDF library:
 
 - Apache PDFBox is already included as a dependency.
 
+### Next Module 3: Audit Logging
+
+Build after the first reports or alongside them if sensitive workflow tracking becomes more urgent.
+
+Recommended first audit events:
+
+- Grade encode, submit, review, approve, and lock.
+- Assessment generation and recalculation.
+- Student profile update and document verification.
+
 ## Current Known Limitations
 
-- No frontend has been built yet.
-- No fee/assessment module yet.
-- No grade recording module yet.
-- Academic records endpoint exists only as an empty placeholder.
+- Admin setup frontend exists, but registrar, cashier, faculty, student portal, and reporting screens are not built yet.
 - Audit logs table exists, but no audit service writes events yet.
 - Document storage is local filesystem only.
 - Redis is present in Docker Compose but not meaningfully used yet.
@@ -557,10 +719,14 @@ Current completed modules:
 - Student profile management
 - Schedule management and conflict checking
 - Enrollment management
+- Fee setup and assessment generation
+- Grade recording and academic record updates
+- Backend readiness for admin setup frontend
+- Admin setup frontend
 
 Next task:
-Implement Fees and Assessment as described in TODAY_PROGRESS_AND_NEXT_STEPS.md.
+Implement the next frontend workflow, starting with registrar/student enrollment screens.
 
-Please create a plan first if we are in Plan Mode, otherwise implement it directly, run mvn test, restart the backend, and manually verify the fee and assessment endpoints.
+Please create a plan first if we are in Plan Mode, otherwise implement it directly, run backend tests, run the frontend build, start the backend, start the frontend dev server, and manually verify the new screens.
 ```
 

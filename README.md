@@ -18,6 +18,10 @@ Spring Boot 3 / Java 21 backend scaffold for the college SIS described in `PROJE
 - Student profile APIs with program/curriculum assignment, nested profile details, document upload metadata, verification, and student search
 - Schedule management APIs with class meetings, filtering, soft archive, and room/faculty/section conflict checking
 - Enrollment management APIs with draft enrollment, schedule selection, validation, confirmation, cancellation, and status history
+- Fee setup and assessment APIs with fixed/per-unit fee rules, assessment generation, recalculation, and status tracking
+- Grade recording APIs with faculty-owned encoding, review, approval, locking, and academic record updates
+- Backend readiness APIs for admin setup frontend, including faculty-user linking and user/role management
+- React/Vite admin setup frontend for users, departments, programs, courses, faculty, rooms, school years, semesters, and sections
 - Audit/report tracking tables reserved for later workflows
 
 ## Local Run
@@ -48,6 +52,16 @@ Content-Type: application/json
 }
 ```
 
+Run the admin setup frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The Vite app runs at `http://localhost:5173` and proxies `/api` calls to `http://localhost:8080`.
+
 ## Implemented Endpoints
 
 Auth:
@@ -56,6 +70,15 @@ Auth:
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/auth/me`
+
+Users and roles:
+
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `GET /api/v1/users/{id}`
+- `PUT /api/v1/users/{id}`
+- `PATCH /api/v1/users/{id}/status`
+- `GET /api/v1/roles`
 
 Academic setup:
 
@@ -140,15 +163,41 @@ Enrollments:
 - `POST /api/v1/enrollments/{id}/validate`
 - `POST /api/v1/enrollments/{id}/confirm`
 - `POST /api/v1/enrollments/{id}/cancel`
+- `POST /api/v1/enrollments/{id}/generate-assessment`
+
+Fees and assessments:
+
+- `GET /api/v1/fees`
+- `POST /api/v1/fees`
+- `GET /api/v1/fees/{id}`
+- `PUT /api/v1/fees/{id}`
+- `PATCH /api/v1/fees/{id}/status`
+- `GET /api/v1/assessments`
+- `GET /api/v1/assessments/{id}`
+- `POST /api/v1/assessments/{id}/recalculate`
+- `PATCH /api/v1/assessments/{id}/status`
+
+Grades:
+
+- `GET /api/v1/grades`
+- `GET /api/v1/grades/class/{scheduleId}`
+- `POST /api/v1/grades/class/{scheduleId}/encode`
+- `POST /api/v1/grades/class/{scheduleId}/submit`
+- `POST /api/v1/grades/class/{scheduleId}/review`
+- `POST /api/v1/grades/class/{scheduleId}/approve`
+- `POST /api/v1/grades/class/{scheduleId}/lock`
+- `GET /api/v1/grades/student/{studentId}`
 
 ## Verify
 
 ```powershell
 mvn test
+cd frontend
+npm run build
 ```
 
 ## Next Implementation Slice
 
-1. Implement fee setup and assessment generation.
-2. Implement grade recording and academic record updates.
-3. Implement reports and PDF generation.
+1. Build the next frontend workflow, starting with registrar setup/enrollment screens or schedule management.
+2. Implement reports and PDF generation, starting with enrollment, assessment, class list, and grade slip forms.
+3. Add audit logging for sensitive workflows.

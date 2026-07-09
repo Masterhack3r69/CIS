@@ -112,6 +112,7 @@ public class AuthService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getFullName(),
+                user.isActive(),
                 user.getRoles().stream().map(role -> role.getName()).sorted().toList(),
                 user.getRoles().stream()
                         .flatMap(role -> role.getPermissions().stream())
