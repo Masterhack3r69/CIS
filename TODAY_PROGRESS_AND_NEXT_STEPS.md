@@ -449,7 +449,55 @@ Why this is next:
 - Fee assessment generation can use enrollment subjects and credit-unit totals.
 - Assessment records are needed before cashier workflows and assessment PDFs.
 
-### Next Module 1: Fees and Assessment
+### Completed Follow-Up: Fees and Assessment
+
+Fees and assessment have now been implemented.
+
+Migration:
+
+- `src/main/resources/db/migration/V6__fees_and_assessments.sql`
+
+Main tables:
+
+- `fee_items`
+- `fee_rules`
+- `assessments`
+- `assessment_items`
+
+Implemented behavior:
+
+- Manage fee setup and school-year-specific fee rules.
+- Support fixed, per-unit, per-subject, per-laboratory-subject, per-semester, per-program, and per-year-level computations.
+- Generate itemized assessments from enrollment subjects.
+- Recalculate unpaid active assessments from current fee rules.
+- Track assessment totals, amount paid, balance, and status.
+- Reject duplicate assessments for the same enrollment.
+- Reject cancelled enrollment assessment generation.
+- Block recalculation once payment has been recorded.
+
+Fee and assessment endpoints:
+
+- `GET /api/v1/fees`
+- `POST /api/v1/fees`
+- `GET /api/v1/fees/{id}`
+- `PUT /api/v1/fees/{id}`
+- `PATCH /api/v1/fees/{id}/status`
+- `GET /api/v1/assessments`
+- `GET /api/v1/assessments/{id}`
+- `POST /api/v1/enrollments/{id}/generate-assessment`
+- `POST /api/v1/assessments/{id}/recalculate`
+- `PATCH /api/v1/assessments/{id}/status`
+
+Verified by automated tests:
+
+- Per-unit tuition, lab-subject fee, and fixed miscellaneous totals are computed.
+- Inactive and non-matching rules are ignored.
+- Duplicate assessment generation is rejected.
+- Recalculation updates unpaid assessments from current fee rules.
+- Paid assessment recalculation is blocked.
+- Cancelled enrollments cannot be assessed.
+
+### Next Module 1: Grade Recording
 
 Build next.
 
@@ -481,10 +529,6 @@ Suggested endpoints:
 - `POST /api/v1/assessments/{id}/recalculate`
 - `PATCH /api/v1/assessments/{id}/status`
 
-### Next Module 2: Grade Recording
-
-Build after schedules and enrollment.
-
 Tables:
 
 - `grades`
@@ -510,7 +554,7 @@ Suggested endpoints:
 - `POST /api/v1/grades/class/{scheduleId}/lock`
 - `GET /api/v1/grades/student/{studentId}`
 
-### Next Module 3: Reports and PDFs
+### Next Module 2: Reports and PDFs
 
 Build after source workflows are stable.
 
@@ -532,7 +576,6 @@ PDF library:
 ## Current Known Limitations
 
 - No frontend has been built yet.
-- No fee/assessment module yet.
 - No grade recording module yet.
 - Academic records endpoint exists only as an empty placeholder.
 - Audit logs table exists, but no audit service writes events yet.

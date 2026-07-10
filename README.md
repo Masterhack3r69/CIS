@@ -18,6 +18,7 @@ Spring Boot 3 / Java 21 backend scaffold for the college SIS described in `PROJE
 - Student profile APIs with program/curriculum assignment, nested profile details, document upload metadata, verification, and student search
 - Schedule management APIs with class meetings, filtering, soft archive, and room/faculty/section conflict checking
 - Enrollment management APIs with draft enrollment, schedule selection, validation, confirmation, cancellation, and status history
+- Fee setup and assessment APIs with fee rules, itemized enrollment assessment generation, recalculation, and status tracking
 - Audit/report tracking tables reserved for later workflows
 
 ## Local Run
@@ -141,6 +142,19 @@ Enrollments:
 - `POST /api/v1/enrollments/{id}/confirm`
 - `POST /api/v1/enrollments/{id}/cancel`
 
+Fees and assessments:
+
+- `GET /api/v1/fees`
+- `POST /api/v1/fees`
+- `GET /api/v1/fees/{id}`
+- `PUT /api/v1/fees/{id}`
+- `PATCH /api/v1/fees/{id}/status`
+- `GET /api/v1/assessments`
+- `GET /api/v1/assessments/{id}`
+- `POST /api/v1/enrollments/{id}/generate-assessment`
+- `POST /api/v1/assessments/{id}/recalculate`
+- `PATCH /api/v1/assessments/{id}/status`
+
 ## Verify
 
 ```powershell
@@ -149,6 +163,6 @@ mvn test
 
 ## Next Implementation Slice
 
-1. Implement fee setup and assessment generation.
-2. Implement grade recording and academic record updates.
-3. Implement reports and PDF generation.
+1. Implement grade recording and academic record updates.
+2. Implement reports and PDF generation.
+3. Add audit logging around sensitive workflows.
