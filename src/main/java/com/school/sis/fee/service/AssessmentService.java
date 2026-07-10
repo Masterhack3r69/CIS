@@ -1,5 +1,6 @@
 package com.school.sis.fee.service;
 
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -31,6 +32,7 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -39,15 +41,18 @@ public class AssessmentService {
     private final AssessmentRepository assessmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final FeeRuleRepository feeRuleRepository;
+    private final AuditService auditService;
 
     public AssessmentService(
             AssessmentRepository assessmentRepository,
             EnrollmentRepository enrollmentRepository,
-            FeeRuleRepository feeRuleRepository
+            FeeRuleRepository feeRuleRepository,
+            AuditService auditService
     ) {
         this.assessmentRepository = assessmentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.feeRuleRepository = feeRuleRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +79,10 @@ public class AssessmentService {
         assessment.setSchoolYear(enrollment.getSchoolYear());
         assessment.setSemester(enrollment.getSemester());
         calculate(assessment, enrollment);
-        return toResponse(assessmentRepository.save(assessment));
+        Assessment saved = assessmentRepository.save(assessment);
+        auditService.log("ASSESSMENT_GENERATED", "FEE", "Assessment", saved.getId(), null,
+                Map.of("enrollmentId", enrollment.getId(), "studentId", saved.getStudent().getId(), "totalAssessment", saved.getTotalAssessment()));
+        return toResponse(saved);
     }
 
     @Transactional
@@ -88,6 +96,8 @@ public class AssessmentService {
         }
         validateEnrollmentForAssessment(assessment.getEnrollment());
         calculate(assessment, assessment.getEnrollment());
+        auditService.log("ASSESSMENT_RECALCULATED", "FEE", "Assessment", assessment.getId(), null,
+                Map.of("enrollmentId", assessment.getEnrollment().getId(), "totalAssessment", assessment.getTotalAssessment()));
         return toResponse(assessment);
     }
 
@@ -101,9 +111,14 @@ public class AssessmentService {
         if (amountPaid.compareTo(assessment.getTotalAssessment()) > 0) {
             throw new BusinessRuleException("Amount paid cannot exceed total assessment");
         }
+        AssessmentStatus oldStatus = assessment.getStatus();
+        BigDecimal oldAmountPaid = assessment.getAmountPaid();
         assessment.setAmountPaid(amountPaid);
         assessment.setStatus(request.status());
         assessment.setBalance(assessment.getTotalAssessment().subtract(amountPaid));
+        auditService.log("ASSESSMENT_STATUS_UPDATED", "FEE", "Assessment", assessment.getId(),
+                Map.of("status", oldStatus.name(), "amountPaid", oldAmountPaid),
+                Map.of("status", assessment.getStatus().name(), "amountPaid", assessment.getAmountPaid(), "balance", assessment.getBalance()));
         return toResponse(assessment);
     }
 

@@ -1,5 +1,6 @@
 package com.school.sis.fee.service;
 
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.fee.dto.FeeItemRequest;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -36,19 +38,22 @@ public class FeeService {
     private final SchoolYearRepository schoolYearRepository;
     private final SemesterRepository semesterRepository;
     private final ProgramRepository programRepository;
+    private final AuditService auditService;
 
     public FeeService(
             FeeItemRepository feeItemRepository,
             FeeRuleRepository feeRuleRepository,
             SchoolYearRepository schoolYearRepository,
             SemesterRepository semesterRepository,
-            ProgramRepository programRepository
+            ProgramRepository programRepository,
+            AuditService auditService
     ) {
         this.feeItemRepository = feeItemRepository;
         this.feeRuleRepository = feeRuleRepository;
         this.schoolYearRepository = schoolYearRepository;
         this.semesterRepository = semesterRepository;
         this.programRepository = programRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +72,8 @@ public class FeeService {
         apply(feeItem, request);
         FeeItem saved = feeItemRepository.save(feeItem);
         replaceRules(saved, request.rules());
+        auditService.log("FEE_CREATED", "FEE", "FeeItem", saved.getId(), null,
+                Map.of("feeCode", saved.getFeeCode(), "status", saved.getStatus().name()));
         return toResponse(saved);
     }
 
@@ -77,13 +84,18 @@ public class FeeService {
         if (request.rules() != null) {
             replaceRules(feeItem, request.rules());
         }
+        auditService.log("FEE_UPDATED", "FEE", "FeeItem", feeItem.getId(), null,
+                Map.of("feeCode", feeItem.getFeeCode(), "status", feeItem.getStatus().name()));
         return toResponse(feeItem);
     }
 
     @Transactional
     public FeeItemResponse updateStatus(UUID id, ActiveStatus status) {
         FeeItem feeItem = findFeeItem(id);
+        ActiveStatus oldStatus = feeItem.getStatus();
         feeItem.setStatus(status);
+        auditService.log("FEE_STATUS_UPDATED", "FEE", "FeeItem", feeItem.getId(),
+                Map.of("status", oldStatus.name()), Map.of("status", feeItem.getStatus().name()));
         return toResponse(feeItem);
     }
 

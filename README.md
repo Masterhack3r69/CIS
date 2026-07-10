@@ -19,7 +19,9 @@ Spring Boot 3 / Java 21 backend scaffold for the college SIS described in `PROJE
 - Schedule management APIs with class meetings, filtering, soft archive, and room/faculty/section conflict checking
 - Enrollment management APIs with draft enrollment, schedule selection, validation, confirmation, cancellation, and status history
 - Fee setup and assessment APIs with fee rules, itemized enrollment assessment generation, recalculation, and status tracking
-- Audit/report tracking tables reserved for later workflows
+- Grade recording APIs with faculty ownership checks, class grade workflow, locking, and academic record updates
+- Reports and PDF generation APIs for core registrar, cashier, and faculty documents
+- Audit tracking tables reserved for later workflows
 
 ## Local Run
 
@@ -155,6 +157,26 @@ Fees and assessments:
 - `POST /api/v1/assessments/{id}/recalculate`
 - `PATCH /api/v1/assessments/{id}/status`
 
+Grades:
+
+- `GET /api/v1/grades`
+- `GET /api/v1/grades/class/{scheduleId}`
+- `POST /api/v1/grades/class/{scheduleId}/encode`
+- `POST /api/v1/grades/class/{scheduleId}/submit`
+- `POST /api/v1/grades/class/{scheduleId}/approve`
+- `POST /api/v1/grades/class/{scheduleId}/lock`
+- `GET /api/v1/grades/student/{studentId}`
+
+Reports:
+
+- `GET /api/v1/reports/students/{id}/profile`
+- `GET /api/v1/reports/students/{id}/curriculum-checklist`
+- `GET /api/v1/reports/enrollments/{id}/form`
+- `GET /api/v1/reports/assessments/{id}`
+- `GET /api/v1/reports/classes/{scheduleId}/class-list`
+- `GET /api/v1/reports/classes/{scheduleId}/grade-sheet`
+- `GET /api/v1/reports/students/{id}/grade-slip`
+
 ## Verify
 
 ```powershell
@@ -163,6 +185,6 @@ mvn test
 
 ## Next Implementation Slice
 
-1. Implement grade recording and academic record updates.
-2. Implement reports and PDF generation.
-3. Add audit logging around sensitive workflows.
+1. Add audit logging around sensitive workflows.
+2. Build frontend workflows for registrar, cashier, and faculty users.
+3. Add production polish such as dashboards, backups, and deployment hardening.

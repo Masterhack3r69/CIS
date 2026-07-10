@@ -3,11 +3,13 @@ package com.school.sis.student.service;
 import com.school.sis.auth.entity.User;
 import com.school.sis.auth.repository.UserRepository;
 import com.school.sis.auth.security.SisUserDetails;
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.curriculum.entity.Curriculum;
 import com.school.sis.curriculum.repository.CurriculumRepository;
+import com.school.sis.grade.service.GradeService;
 import com.school.sis.setup.entity.Program;
 import com.school.sis.setup.entity.Section;
 import com.school.sis.setup.repository.ProgramRepository;
@@ -56,6 +58,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -70,6 +73,8 @@ public class StudentService {
     private final CurriculumRepository curriculumRepository;
     private final SectionRepository sectionRepository;
     private final UserRepository userRepository;
+    private final GradeService gradeService;
+    private final AuditService auditService;
     private final Path documentRoot;
 
     public StudentService(
@@ -82,6 +87,8 @@ public class StudentService {
             CurriculumRepository curriculumRepository,
             SectionRepository sectionRepository,
             UserRepository userRepository,
+            GradeService gradeService,
+            AuditService auditService,
             @Value("${sis.storage.document-root:uploads/documents}") String documentRoot
     ) {
         this.studentRepository = studentRepository;
@@ -93,6 +100,8 @@ public class StudentService {
         this.curriculumRepository = curriculumRepository;
         this.sectionRepository = sectionRepository;
         this.userRepository = userRepository;
+        this.gradeService = gradeService;
+        this.auditService = auditService;
         this.documentRoot = Paths.get(documentRoot).toAbsolutePath().normalize();
     }
 
@@ -114,6 +123,8 @@ public class StudentService {
         applyStudent(student, request);
         Student saved = studentRepository.save(student);
         saveCompanionRecords(saved, request);
+        auditService.log("STUDENT_CREATED", "STUDENT", "Student", saved.getId(), null,
+                Map.of("studentNumber", saved.getStudentNumber(), "status", saved.getStatus().name()));
         return toResponse(saved);
     }
 
@@ -124,13 +135,18 @@ public class StudentService {
         Student student = findStudent(id);
         applyStudent(student, request);
         saveCompanionRecords(student, request);
+        auditService.log("STUDENT_UPDATED", "STUDENT", "Student", student.getId(), null,
+                Map.of("studentNumber", student.getStudentNumber(), "programId", student.getProgram().getId()));
         return toResponse(student);
     }
 
     @Transactional
     public StudentResponse updateStatus(UUID id, StudentStatusRequest request) {
         Student student = findStudent(id);
+        var oldStatus = student.getStatus();
         student.setStatus(request.status());
+        auditService.log("STUDENT_STATUS_UPDATED", "STUDENT", "Student", student.getId(),
+                Map.of("status", oldStatus.name()), Map.of("status", student.getStatus().name()));
         return toResponse(student);
     }
 
@@ -164,7 +180,10 @@ public class StudentService {
             document.setUploadedBy(uploader);
             document.setVerificationStatus(DocumentVerificationStatus.SUBMITTED);
             document.setRemarks(remarks);
-            return toDocumentResponse(documentRepository.save(document));
+            StudentDocument saved = documentRepository.save(document);
+            auditService.log(uploader, "DOCUMENT_UPLOADED", "STUDENT", "StudentDocument", saved.getId(), null,
+                    Map.of("studentId", student.getId(), "documentType", saved.getDocumentType(), "fileName", saved.getFileName()));
+            return toDocumentResponse(saved);
         } catch (IOException exception) {
             throw new BusinessRuleException("Unable to store document file");
         }
@@ -183,10 +202,15 @@ public class StudentService {
     public StudentDocumentResponse verifyDocument(UUID studentId, UUID documentId, DocumentVerificationRequest request, SisUserDetails userDetails) {
         StudentDocument document = documentRepository.findByIdAndStudentId(documentId, studentId)
                 .orElseThrow(() -> new NotFoundException("Student document not found"));
+        var oldStatus = document.getVerificationStatus();
         document.setVerificationStatus(request.status());
-        document.setVerifiedBy(findUser(userDetails));
+        User verifier = findUser(userDetails);
+        document.setVerifiedBy(verifier);
         document.setVerifiedAt(Instant.now());
         document.setRemarks(request.remarks());
+        auditService.log(verifier, "DOCUMENT_VERIFIED", "STUDENT", "StudentDocument", document.getId(),
+                Map.of("status", oldStatus.name()),
+                Map.of("studentId", studentId, "status", document.getVerificationStatus().name()));
         return toDocumentResponse(document);
     }
 
@@ -201,7 +225,7 @@ public class StudentService {
                 student.getProgram().getProgramCode(),
                 student.getCurriculum().getId(),
                 student.getCurriculum().getCurriculumCode(),
-                List.of()
+                gradeService.academicRecords(studentId)
         );
     }
 

@@ -336,7 +336,7 @@ class EnrollmentServiceTests {
     }
 
     @Test
-    void validateReturnsPrerequisiteWarningWithoutBlocking() {
+    void validateDoesNotWarnWhenNoPrerequisitesExist() {
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
         ScheduleResponse schedule = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
@@ -344,7 +344,7 @@ class EnrollmentServiceTests {
         EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
 
         assertThat(validation.valid()).isTrue();
-        assertThat(validation.warnings()).extracting("code").contains("PREREQUISITES_NOT_EVALUATED");
+        assertThat(validation.warnings()).isEmpty();
     }
 
     private EnrollmentRequest enrollmentRequest(UUID sectionId) {

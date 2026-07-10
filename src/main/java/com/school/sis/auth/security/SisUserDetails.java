@@ -29,6 +29,10 @@ public class SisUserDetails implements UserDetails {
         return user.getFullName();
     }
 
+    public UUID facultyId() {
+        return user.getFaculty() == null ? null : user.getFaculty().getId();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return user.getRoles().stream()

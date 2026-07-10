@@ -11,6 +11,7 @@ import com.school.sis.auth.repository.UserRepository;
 import com.school.sis.auth.security.JwtProperties;
 import com.school.sis.auth.security.JwtService;
 import com.school.sis.auth.security.SisUserDetails;
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +24,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,6 +35,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AuditService auditService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(
@@ -40,24 +43,35 @@ public class AuthService {
             JwtService jwtService,
             JwtProperties jwtProperties,
             UserRepository userRepository,
-            RefreshTokenRepository refreshTokenRepository
+            RefreshTokenRepository refreshTokenRepository,
+            AuditService auditService
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.usernameOrEmail(), request.password())
-        );
-        SisUserDetails userDetails = (SisUserDetails) authentication.getPrincipal();
-        User user = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(userDetails.getUsername(), userDetails.getUsername())
-                .orElseThrow(() -> new NotFoundException("User not found"));
-        return issueTokens(user);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.usernameOrEmail(), request.password())
+            );
+            SisUserDetails userDetails = (SisUserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(userDetails.getUsername(), userDetails.getUsername())
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+            AuthResponse response = issueTokens(user);
+            auditService.log(user, "LOGIN_SUCCESS", "AUTH", "User", user.getId(), null,
+                    Map.of("username", user.getUsername()));
+            return response;
+        } catch (RuntimeException exception) {
+            auditService.log((User) null, "LOGIN_FAILED", "AUTH", "User", null, null,
+                    Map.of("usernameOrEmail", request.usernameOrEmail()));
+            throw exception;
+        }
     }
 
     @Transactional
@@ -73,7 +87,12 @@ public class AuthService {
 
     @Transactional
     public void logout(RefreshRequest request) {
-        refreshTokenRepository.findByToken(request.refreshToken()).ifPresent(RefreshToken::revoke);
+        refreshTokenRepository.findByToken(request.refreshToken()).ifPresent(refreshToken -> {
+            User user = refreshToken.getUser();
+            refreshToken.revoke();
+            auditService.log(user, "LOGOUT", "AUTH", "User", user.getId(), null,
+                    Map.of("username", user.getUsername()));
+        });
     }
 
     public UserSummary summarize(SisUserDetails userDetails) {

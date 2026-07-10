@@ -497,54 +497,34 @@ Verified by automated tests:
 - Paid assessment recalculation is blocked.
 - Cancelled enrollments cannot be assessed.
 
-### Next Module 1: Grade Recording
+### Completed Follow-Up: Grade Recording and Academic Records
 
-Build next.
-
-Tables:
-
-- `fee_items`
-- `fee_rules`
-- `assessments`
-- `assessment_items`
-- optional `payments`
-
-Core behavior:
-
-- Manage fee setup.
-- Generate assessment from enrollment subjects.
-- Compute per-unit and fixed fees.
-- Recalculate assessment.
-- Track assessment status.
-
-Suggested endpoints:
-
-- `GET /api/v1/fees`
-- `POST /api/v1/fees`
-- `GET /api/v1/fees/{id}`
-- `PUT /api/v1/fees/{id}`
-- `PATCH /api/v1/fees/{id}/status`
-- `GET /api/v1/assessments`
-- `GET /api/v1/assessments/{id}`
-- `POST /api/v1/assessments/{id}/recalculate`
-- `PATCH /api/v1/assessments/{id}/status`
+Grade recording and academic record updates have now been implemented.
 
 Tables:
 
 - `grades`
 - `grade_status_history`
-- later: `grade_change_requests`
+- `academic_records`
 
-Core behavior:
+Migration:
+
+- `src/main/resources/db/migration/V7__grade_recording_and_academic_records.sql`
+
+Implemented behavior:
 
 - Faculty class list.
 - Grade encoding.
 - Grade submission.
 - Registrar approval.
 - Grade locking.
-- Update academic records when grade is approved/locked.
+- Faculty ownership checks through nullable `users.faculty_id`.
+- PH numeric grade validation from `1.00` to `5.00` in `0.25` increments.
+- Academic record upsert when approved grades are locked.
+- Student academic records now return typed locked-grade records.
+- Enrollment prerequisite validation now uses locked passing academic records.
 
-Suggested endpoints:
+Grade endpoints:
 
 - `GET /api/v1/grades`
 - `GET /api/v1/grades/class/{scheduleId}`
@@ -554,30 +534,75 @@ Suggested endpoints:
 - `POST /api/v1/grades/class/{scheduleId}/lock`
 - `GET /api/v1/grades/student/{studentId}`
 
-### Next Module 2: Reports and PDFs
+Verified by automated tests:
 
-Build after source workflows are stable.
+- Draft grade rows are created for confirmed enrollment subjects.
+- Faculty can encode assigned classes and is blocked from other faculty classes.
+- Invalid grade values and increments are rejected.
+- Submission requires all class grades.
+- Submitted grades can be approved and locked.
+- Locked grades create academic records and cannot be edited.
+- Passed locked grades satisfy prerequisites; failed locked grades do not.
+
+### Completed Follow-Up: Reports and PDFs
+
+Reports and PDF generation have now been implemented.
+
+Main package:
+
+- `src/main/java/com/school/sis/report`
+
+Implemented behavior:
+
+- Core PDF reports generated with Apache PDFBox.
+- School branding is configurable through `sis.school.*` properties with safe defaults.
+- Successful report generation writes to the existing `generated_reports` table.
+- PDFs are returned inline with `Content-Type: application/pdf`.
+
+Report endpoints:
+
+- `GET /api/v1/reports/students/{id}/profile`
+- `GET /api/v1/reports/students/{id}/curriculum-checklist`
+- `GET /api/v1/reports/enrollments/{id}/form`
+- `GET /api/v1/reports/assessments/{id}`
+- `GET /api/v1/reports/classes/{scheduleId}/class-list`
+- `GET /api/v1/reports/classes/{scheduleId}/grade-sheet`
+- `GET /api/v1/reports/students/{id}/grade-slip`
+
+Verified by automated tests:
+
+- All seven core reports return valid PDF bytes.
+- Extracted PDF text includes key student, course, assessment, class, and grade data.
+- Successful generation records a generated report log row.
+- Missing report targets return not found errors.
+
+### Next Module 1: Audit Logging
+
+Build next.
+
+Recommended first audit events:
+
+- User login and failed login attempts.
+- Student profile creation/update.
+- Document upload and verification.
+- Course/curriculum/schedule changes.
+- Enrollment creation, confirmation, and cancellation.
+- Fee setup changes and assessment generation.
+- Grade encoding, submission, approval, and locking.
+
+### Next Module 2: Frontend Workflows
+
+Build after backend workflows are stable.
 
 Recommended first reports:
 
-- Student profile report
-- Student list report
-- Curriculum checklist
-- Enrollment form
-- Assessment form
-- Class list
-- Grade sheet
-- Grade slip
-
-PDF library:
-
-- Apache PDFBox is already included as a dependency.
+- Registrar workflows for students, curriculum, schedules, enrollment, grades, and reports.
+- Cashier workflows for fee setup and assessment.
+- Faculty workflows for class lists and grade encoding.
 
 ## Current Known Limitations
 
 - No frontend has been built yet.
-- No grade recording module yet.
-- Academic records endpoint exists only as an empty placeholder.
 - Audit logs table exists, but no audit service writes events yet.
 - Document storage is local filesystem only.
 - Redis is present in Docker Compose but not meaningfully used yet.
@@ -600,10 +625,13 @@ Current completed modules:
 - Student profile management
 - Schedule management and conflict checking
 - Enrollment management
+- Fees and assessment
+- Grade recording and academic records
+- Reports and PDFs
 
 Next task:
-Implement Fees and Assessment as described in TODAY_PROGRESS_AND_NEXT_STEPS.md.
+Implement Audit Logging as described in TODAY_PROGRESS_AND_NEXT_STEPS.md.
 
-Please create a plan first if we are in Plan Mode, otherwise implement it directly, run mvn test, restart the backend, and manually verify the fee and assessment endpoints.
+Please create a plan first if we are in Plan Mode, otherwise implement it directly, run mvn test, restart the backend, and manually verify the audit events.
 ```
 

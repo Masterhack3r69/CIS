@@ -24,6 +24,11 @@ spring:
       max-request-size: 10MB
 
 sis:
+  school:
+    name: ${SCHOOL_NAME:Student Information System}
+    address: ${SCHOOL_ADDRESS:}
+    contact: ${SCHOOL_CONTACT:}
+    logo-path: ${SCHOOL_LOGO_PATH:}
   jwt:
     secret: ${JWT_SECRET:change_me_change_me_change_me_change_me_change_me_change_me}
     access-expiration-seconds: ${JWT_ACCESS_EXPIRATION:900}

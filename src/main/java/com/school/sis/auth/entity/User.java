@@ -1,6 +1,7 @@
 package com.school.sis.auth.entity;
 
 import com.school.sis.common.audit.AuditableEntity;
+import com.school.sis.setup.entity.Faculty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.util.HashSet;
@@ -35,6 +37,10 @@ public class User extends AuditableEntity {
 
     @Column(nullable = false)
     private boolean active;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "faculty_id")
+    private Faculty faculty;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -69,6 +75,14 @@ public class User extends AuditableEntity {
 
     public boolean isActive() {
         return active;
+    }
+
+    public Faculty getFaculty() {
+        return faculty;
+    }
+
+    public void setFaculty(Faculty faculty) {
+        this.faculty = faculty;
     }
 
     public Set<Role> getRoles() {

@@ -1,5 +1,6 @@
 package com.school.sis.enrollment.service;
 
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -22,6 +23,7 @@ import com.school.sis.enrollment.entity.EnrollmentSubjectStatus;
 import com.school.sis.enrollment.repository.EnrollmentRepository;
 import com.school.sis.enrollment.repository.EnrollmentStatusHistoryRepository;
 import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
+import com.school.sis.grade.service.GradeService;
 import com.school.sis.schedule.dto.ScheduleMeetingResponse;
 import com.school.sis.schedule.entity.ClassSchedule;
 import com.school.sis.schedule.entity.ScheduleMeeting;
@@ -47,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,6 +68,8 @@ public class EnrollmentService {
     private final SectionRepository sectionRepository;
     private final ClassScheduleRepository classScheduleRepository;
     private final CurriculumCourseRepository curriculumCourseRepository;
+    private final GradeService gradeService;
+    private final AuditService auditService;
 
     public EnrollmentService(
             EnrollmentRepository enrollmentRepository,
@@ -75,7 +80,9 @@ public class EnrollmentService {
             SemesterRepository semesterRepository,
             SectionRepository sectionRepository,
             ClassScheduleRepository classScheduleRepository,
-            CurriculumCourseRepository curriculumCourseRepository
+            CurriculumCourseRepository curriculumCourseRepository,
+            GradeService gradeService,
+            AuditService auditService
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentSubjectRepository = enrollmentSubjectRepository;
@@ -86,6 +93,8 @@ public class EnrollmentService {
         this.sectionRepository = sectionRepository;
         this.classScheduleRepository = classScheduleRepository;
         this.curriculumCourseRepository = curriculumCourseRepository;
+        this.gradeService = gradeService;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -120,6 +129,8 @@ public class EnrollmentService {
         enrollment.setStatus(EnrollmentStatus.DRAFT);
         Enrollment saved = enrollmentRepository.save(enrollment);
         recordStatusHistory(saved, null, EnrollmentStatus.DRAFT, "Enrollment created");
+        auditService.log("ENROLLMENT_CREATED", "ENROLLMENT", "Enrollment", saved.getId(), null,
+                Map.of("studentId", student.getId(), "status", saved.getStatus().name()));
         return toResponse(saved);
     }
 
@@ -131,6 +142,8 @@ public class EnrollmentService {
         validateSection(enrollment.getStudent(), enrollment.getSchoolYear(), enrollment.getSemester(), section);
         enrollment.setSection(section);
         enrollment.setRemarks(request.remarks());
+        auditService.log("ENROLLMENT_UPDATED", "ENROLLMENT", "Enrollment", enrollment.getId(), null,
+                Map.of("studentId", enrollment.getStudent().getId(), "status", enrollment.getStatus().name()));
         return toResponse(enrollment);
     }
 
@@ -150,7 +163,9 @@ public class EnrollmentService {
         subject.setClassSchedule(schedule);
         subject.setStatus(EnrollmentSubjectStatus.ENROLLED);
         enrollment.addSubject(subject);
-        enrollmentSubjectRepository.save(subject);
+        EnrollmentSubject savedSubject = enrollmentSubjectRepository.save(subject);
+        auditService.log("ENROLLMENT_SUBJECT_ADDED", "ENROLLMENT", "EnrollmentSubject", savedSubject.getId(), null,
+                Map.of("enrollmentId", enrollment.getId(), "scheduleId", schedule.getId(), "status", savedSubject.getStatus().name()));
         return toResponse(enrollment);
     }
 
@@ -160,8 +175,12 @@ public class EnrollmentService {
         ensureDraft(enrollment);
         EnrollmentSubject subject = enrollmentSubjectRepository.findByIdAndEnrollmentId(subjectId, enrollmentId)
                 .orElseThrow(() -> new NotFoundException("Enrollment subject not found"));
+        EnrollmentSubjectStatus oldStatus = subject.getStatus();
         subject.setStatus(EnrollmentSubjectStatus.DROPPED);
         subject.setDroppedAt(Instant.now());
+        auditService.log("ENROLLMENT_SUBJECT_DROPPED", "ENROLLMENT", "EnrollmentSubject", subject.getId(),
+                Map.of("status", oldStatus.name()),
+                Map.of("enrollmentId", enrollment.getId(), "scheduleId", subject.getClassSchedule().getId(), "status", subject.getStatus().name()));
         return toResponse(enrollment);
     }
 
@@ -181,6 +200,9 @@ public class EnrollmentService {
         EnrollmentStatus previous = enrollment.getStatus();
         enrollment.setStatus(EnrollmentStatus.CONFIRMED);
         recordStatusHistory(enrollment, previous, EnrollmentStatus.CONFIRMED, "Enrollment confirmed");
+        auditService.log("ENROLLMENT_CONFIRMED", "ENROLLMENT", "Enrollment", enrollment.getId(),
+                Map.of("status", previous.name()),
+                Map.of("studentId", enrollment.getStudent().getId(), "status", enrollment.getStatus().name(), "subjectCount", activeSubjects(enrollment).size()));
         return toResponse(enrollment);
     }
 
@@ -193,6 +215,9 @@ public class EnrollmentService {
         EnrollmentStatus previous = enrollment.getStatus();
         enrollment.setStatus(EnrollmentStatus.CANCELLED);
         recordStatusHistory(enrollment, previous, EnrollmentStatus.CANCELLED, "Enrollment cancelled");
+        auditService.log("ENROLLMENT_CANCELLED", "ENROLLMENT", "Enrollment", enrollment.getId(),
+                Map.of("status", previous.name()),
+                Map.of("studentId", enrollment.getStudent().getId(), "status", enrollment.getStatus().name()));
         return toResponse(enrollment);
     }
 
@@ -238,6 +263,15 @@ public class EnrollmentService {
             if (!courseExistsInStudentCurriculum(enrollment, schedule)) {
                 blocking.add(issue("NON_CURRICULUM_COURSE", "Selected schedule course is not part of the student's curriculum", subject.getId(), schedule.getId()));
             }
+            CurriculumCourse curriculumCourse = curriculumCourseForSchedule(enrollment, schedule);
+            if (curriculumCourse != null) {
+                for (var prerequisite : curriculumCourse.getPrerequisites()) {
+                    if (!gradeService.hasPassedLockedCourse(enrollment.getStudent().getId(), prerequisite.getId())) {
+                        blocking.add(issue("PREREQUISITE_NOT_SATISFIED", "Selected schedule has unmet prerequisites", subject.getId(), schedule.getId()));
+                        break;
+                    }
+                }
+            }
         }
         for (int i = 0; i < subjects.size(); i++) {
             for (int j = i + 1; j < subjects.size(); j++) {
@@ -246,8 +280,6 @@ public class EnrollmentService {
                 }
             }
         }
-        warnings.add(issue("PREREQUISITES_NOT_EVALUATED", "Prerequisites are not evaluated until grades and academic records are implemented", null, null));
-
         BigDecimal totalCreditUnits = totalCreditUnits(subjects);
         return new EnrollmentValidationResponse(blocking.isEmpty(), blocking, warnings, totalCreditUnits, subjects.size());
     }
@@ -277,10 +309,15 @@ public class EnrollmentService {
     }
 
     private boolean courseExistsInStudentCurriculum(Enrollment enrollment, ClassSchedule schedule) {
+        return curriculumCourseForSchedule(enrollment, schedule) != null;
+    }
+
+    private CurriculumCourse curriculumCourseForSchedule(Enrollment enrollment, ClassSchedule schedule) {
         return curriculumCourseRepository.findByCurriculumIdOrderByYearLevelAscSemesterAscSortOrderAsc(enrollment.getStudent().getCurriculum().getId())
                 .stream()
-                .map(CurriculumCourse::getCourse)
-                .anyMatch(course -> course.getId().equals(schedule.getCourse().getId()));
+                .filter(curriculumCourse -> curriculumCourse.getCourse().getId().equals(schedule.getCourse().getId()))
+                .findFirst()
+                .orElse(null);
     }
 
     private void validateSection(Student student, SchoolYear schoolYear, Semester semester, Section section) {
