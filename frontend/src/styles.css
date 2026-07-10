@@ -122,6 +122,10 @@ nav { display: grid; gap: 4px; }
   align-items: start;
 }
 .contentGrid.wide { grid-template-columns: minmax(0, 1fr) minmax(420px, 520px); }
+.contentGrid.curriculumGrid { grid-template-columns: minmax(0, .95fr) minmax(560px, 1.25fr); }
+.contentGrid.scheduleGrid { grid-template-columns: minmax(0, 1.15fr) minmax(540px, .85fr); }
+.contentGrid.cashierGrid { grid-template-columns: minmax(0, 1.1fr) minmax(500px, .9fr); }
+.contentGrid.feeGrid { grid-template-columns: minmax(0, .9fr) minmax(620px, 1.1fr); }
 .listPane, .editPane {
   background: #fff;
   border: 1px solid #dde3ea;
@@ -134,10 +138,13 @@ nav { display: grid; gap: 4px; }
   border-bottom: 1px solid #e5eaf0;
 }
 .toolbar input { max-width: 320px; }
+.filterBar { flex-wrap: wrap; align-items: center; }
+.filterBar input, .filterBar select { width: auto; min-width: 145px; }
 .tableWrap { overflow: auto; max-height: calc(100vh - 170px); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { border-bottom: 1px solid #edf1f5; padding: 10px 12px; text-align: left; vertical-align: middle; }
 th { position: sticky; top: 0; background: #f8fafc; color: #526176; font-size: 12px; z-index: 1; }
+tr.rowIssue td { background: #fff7ed; }
 .actions { white-space: nowrap; text-align: right; }
 .actions button { margin-left: 6px; padding: 6px 9px; }
 .pill {
@@ -161,6 +168,18 @@ th { position: sticky; top: 0; background: #f8fafc; color: #526176; font-size: 1
 .subpanels, .detailStack { display: grid; gap: 14px; margin-top: 16px; }
 .subpanels h3 { margin: 0 0 8px; font-size: 15px; }
 .inlineForm { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.meetingEditor { grid-column: 1 / -1; display: grid; gap: 8px; }
+.meetingRow { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 8px; align-items: end; }
+.ruleEditor { display: grid; gap: 10px; }
+.ruleRow {
+  display: grid;
+  grid-template-columns: 1fr .8fr 1fr 1fr 1fr .7fr .8fr auto;
+  gap: 8px;
+  align-items: end;
+  border: 1px solid #edf1f5;
+  border-radius: 6px;
+  padding: 10px;
+}
 .summaryBox {
   display: grid;
   gap: 4px;
@@ -170,6 +189,19 @@ th { position: sticky; top: 0; background: #f8fafc; color: #526176; font-size: 1
   padding: 10px;
   font-size: 13px;
 }
+.validationBox.invalid { border-color: #fed7aa; background: #fff7ed; }
+.validationBox.valid { border-color: #bbf7d0; background: #f0fdf4; }
+.issueGroup { margin-top: 4px; font-weight: 800; color: #475569; }
+.issueLine.blocking { color: #9a3412; }
+.issueLine.warning { color: #854d0e; }
+.requirementHint { margin-top: -4px; }
+.requirementOk { color: #166534; }
+.requirementMissing { color: #9a3412; font-weight: 700; }
+.assessmentTotal strong { font-size: 16px; }
+.curriculumTerm { overflow: hidden; }
+.curriculumTerm .tableWrap { max-height: none; border: 1px solid #edf1f5; border-radius: 6px; }
+.curriculumTerm table { font-size: 12px; }
+.conflictBox { margin-top: 14px; }
 .mutedLine { color: #64748b; font-size: 12px; }
 .actions.wrap { white-space: normal; text-align: left; display: flex; flex-wrap: wrap; gap: 8px; }
 .actions.wrap button { margin-left: 0; }
@@ -180,8 +212,14 @@ th { position: sticky; top: 0; background: #f8fafc; color: #526176; font-size: 1
   nav { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
   .contentGrid { grid-template-columns: 1fr; }
   .contentGrid.wide { grid-template-columns: 1fr; }
+  .contentGrid.curriculumGrid { grid-template-columns: 1fr; }
+  .contentGrid.scheduleGrid { grid-template-columns: 1fr; }
+  .contentGrid.cashierGrid { grid-template-columns: 1fr; }
+  .contentGrid.feeGrid { grid-template-columns: 1fr; }
   .editPane { position: static; }
   .inlineForm { grid-template-columns: 1fr; }
+  .meetingRow { grid-template-columns: 1fr; }
+  .ruleRow { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {

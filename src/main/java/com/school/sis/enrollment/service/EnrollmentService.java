@@ -22,11 +22,15 @@ import com.school.sis.enrollment.entity.EnrollmentSubjectStatus;
 import com.school.sis.enrollment.repository.EnrollmentRepository;
 import com.school.sis.enrollment.repository.EnrollmentStatusHistoryRepository;
 import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
+import com.school.sis.grade.entity.GradeRemark;
+import com.school.sis.grade.entity.GradeStatus;
+import com.school.sis.grade.repository.AcademicRecordRepository;
 import com.school.sis.schedule.dto.ScheduleMeetingResponse;
 import com.school.sis.schedule.entity.ClassSchedule;
 import com.school.sis.schedule.entity.ScheduleMeeting;
 import com.school.sis.schedule.entity.ScheduleStatus;
 import com.school.sis.schedule.repository.ClassScheduleRepository;
+import com.school.sis.setup.entity.Course;
 import com.school.sis.setup.entity.Faculty;
 import com.school.sis.setup.entity.SchoolYear;
 import com.school.sis.setup.entity.Section;
@@ -47,14 +51,17 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @Service
 public class EnrollmentService {
 
     private static final Set<EnrollmentStatus> ACTIVE_ENROLLMENT_STATUSES = Set.of(EnrollmentStatus.DRAFT, EnrollmentStatus.CONFIRMED);
+    private static final Set<GradeStatus> COMPLETED_GRADE_STATUSES = Set.of(GradeStatus.APPROVED, GradeStatus.LOCKED);
 
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentSubjectRepository enrollmentSubjectRepository;
@@ -65,6 +72,7 @@ public class EnrollmentService {
     private final SectionRepository sectionRepository;
     private final ClassScheduleRepository classScheduleRepository;
     private final CurriculumCourseRepository curriculumCourseRepository;
+    private final AcademicRecordRepository academicRecordRepository;
 
     public EnrollmentService(
             EnrollmentRepository enrollmentRepository,
@@ -75,7 +83,8 @@ public class EnrollmentService {
             SemesterRepository semesterRepository,
             SectionRepository sectionRepository,
             ClassScheduleRepository classScheduleRepository,
-            CurriculumCourseRepository curriculumCourseRepository
+            CurriculumCourseRepository curriculumCourseRepository,
+            AcademicRecordRepository academicRecordRepository
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentSubjectRepository = enrollmentSubjectRepository;
@@ -86,6 +95,7 @@ public class EnrollmentService {
         this.sectionRepository = sectionRepository;
         this.classScheduleRepository = classScheduleRepository;
         this.curriculumCourseRepository = curriculumCourseRepository;
+        this.academicRecordRepository = academicRecordRepository;
     }
 
     @Transactional(readOnly = true)
@@ -219,12 +229,22 @@ public class EnrollmentService {
         List<EnrollmentSubject> subjects = activeSubjects(enrollment);
         List<EnrollmentValidationIssueResponse> blocking = new ArrayList<>();
         List<EnrollmentValidationIssueResponse> warnings = new ArrayList<>();
+        Map<UUID, CurriculumCourse> curriculumCoursesByCourseId = curriculumCoursesByCourseId(enrollment);
+        Set<UUID> completedCourseIds = academicRecordRepository.findCompletedCourseIds(
+                enrollment.getStudent().getId(),
+                GradeRemark.PASSED,
+                COMPLETED_GRADE_STATUSES
+        );
+        Set<UUID> selectedCourseIds = subjects.stream()
+                .map(subject -> subject.getClassSchedule().getCourse().getId())
+                .collect(Collectors.toSet());
 
         if (subjects.isEmpty()) {
             blocking.add(issue("NO_SUBJECTS", "Enrollment must have at least one selected subject", null, null));
         }
         for (EnrollmentSubject subject : subjects) {
             ClassSchedule schedule = subject.getClassSchedule();
+            CurriculumCourse curriculumCourse = curriculumCoursesByCourseId.get(schedule.getCourse().getId());
             if (schedule.getStatus() != ScheduleStatus.ACTIVE) {
                 blocking.add(issue("INACTIVE_SCHEDULE", "Selected schedule is not active", subject.getId(), schedule.getId()));
             }
@@ -235,8 +255,10 @@ public class EnrollmentService {
             if (enrollment.getSection() != null && !schedule.getSection().getId().equals(enrollment.getSection().getId())) {
                 blocking.add(issue("SECTION_MISMATCH", "Selected schedule section does not match enrollment section", subject.getId(), schedule.getId()));
             }
-            if (!courseExistsInStudentCurriculum(enrollment, schedule)) {
+            if (curriculumCourse == null) {
                 blocking.add(issue("NON_CURRICULUM_COURSE", "Selected schedule course is not part of the student's curriculum", subject.getId(), schedule.getId()));
+            } else {
+                validatePrerequisitesAndCorequisites(curriculumCourse, completedCourseIds, selectedCourseIds, subject, blocking);
             }
         }
         for (int i = 0; i < subjects.size(); i++) {
@@ -246,7 +268,6 @@ public class EnrollmentService {
                 }
             }
         }
-        warnings.add(issue("PREREQUISITES_NOT_EVALUATED", "Prerequisites are not evaluated until grades and academic records are implemented", null, null));
 
         BigDecimal totalCreditUnits = totalCreditUnits(subjects);
         return new EnrollmentValidationResponse(blocking.isEmpty(), blocking, warnings, totalCreditUnits, subjects.size());
@@ -277,10 +298,47 @@ public class EnrollmentService {
     }
 
     private boolean courseExistsInStudentCurriculum(Enrollment enrollment, ClassSchedule schedule) {
+        return curriculumCoursesByCourseId(enrollment).containsKey(schedule.getCourse().getId());
+    }
+
+    private Map<UUID, CurriculumCourse> curriculumCoursesByCourseId(Enrollment enrollment) {
         return curriculumCourseRepository.findByCurriculumIdOrderByYearLevelAscSemesterAscSortOrderAsc(enrollment.getStudent().getCurriculum().getId())
                 .stream()
-                .map(CurriculumCourse::getCourse)
-                .anyMatch(course -> course.getId().equals(schedule.getCourse().getId()));
+                .collect(Collectors.toMap(
+                        curriculumCourse -> curriculumCourse.getCourse().getId(),
+                        Function.identity(),
+                        (first, second) -> first
+                ));
+    }
+
+    private void validatePrerequisitesAndCorequisites(
+            CurriculumCourse curriculumCourse,
+            Set<UUID> completedCourseIds,
+            Set<UUID> selectedCourseIds,
+            EnrollmentSubject subject,
+            List<EnrollmentValidationIssueResponse> blocking
+    ) {
+        Course selectedCourse = curriculumCourse.getCourse();
+        for (Course prerequisite : curriculumCourse.getPrerequisites()) {
+            if (!completedCourseIds.contains(prerequisite.getId())) {
+                blocking.add(issue(
+                        "UNMET_PREREQUISITE",
+                        selectedCourse.getCourseCode() + " requires prerequisite " + prerequisite.getCourseCode(),
+                        subject.getId(),
+                        subject.getClassSchedule().getId()
+                ));
+            }
+        }
+        for (Course corequisite : curriculumCourse.getCorequisites()) {
+            if (!completedCourseIds.contains(corequisite.getId()) && !selectedCourseIds.contains(corequisite.getId())) {
+                blocking.add(issue(
+                        "MISSING_COREQUISITE",
+                        selectedCourse.getCourseCode() + " requires corequisite " + corequisite.getCourseCode(),
+                        subject.getId(),
+                        subject.getClassSchedule().getId()
+                ));
+            }
+        }
     }
 
     private void validateSection(Student student, SchoolYear schoolYear, Semester semester, Section section) {

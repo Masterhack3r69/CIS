@@ -660,24 +660,63 @@ Backend setup check:
 - No additional setup APIs were required for this slice.
 - Existing setup, curriculum, student, schedule, enrollment, assessment, and academic-record endpoints were sufficient.
 
+### 12. Curriculum Management Frontend
+
+Curriculum management now has a dedicated frontend screen in the same Vite app.
+
+Implemented screens and actions:
+
+- Curriculum list/search.
+- Curriculum header create/update.
+- Curriculum activation.
+- Curriculum detail view.
+- Course assignment add/update/delete.
+- Prerequisite and corequisite selection from assigned curriculum courses.
+- Read-only checklist view grouped by year level and semester.
+- Term totals for lecture hours, laboratory hours, and credit units.
+
+Backend setup check:
+
+- No additional backend APIs or migrations were required.
+- Existing curriculum and course endpoints were sufficient.
+
+### 13. Schedule Management Frontend
+
+Schedule management now has a dedicated frontend screen in the same Vite app.
+
+Implemented screens and actions:
+
+- Schedule list/search/filter by term, program, section, faculty, room, course, day, and status.
+- Schedule create/update with section, course, faculty, room, school year, semester, capacity, and status.
+- Multiple meeting row editor with day, start time, and end time.
+- Conflict check action with room, faculty, and section conflict details.
+- Soft archive action through the schedule delete endpoint.
+- Enrollment schedule dropdown labels now include course, section, faculty, room, and meeting times.
+
+Backend setup check:
+
+- No additional backend APIs or migrations were required.
+- Existing schedule, setup, and enrollment endpoints were sufficient.
+
 ## What To Build Next
 
-The recommended next slice is the next frontend workflow after registrar/enrollment.
+The recommended next slice is the next frontend workflow after schedule management.
 
 Why this is next:
 
-- Admin setup and first registrar/enrollment data can now be created through the UI.
-- Schedule, cashier, faculty grade encoding, and reporting workflows still need their own screens before the system feels end-to-end usable.
+- Admin setup, curriculum, schedule, and first registrar/enrollment data can now be created through the UI.
+- Cashier, faculty grade encoding, and reporting workflows still need their own screens before the system feels end-to-end usable.
 - Building one workflow at a time keeps the frontend aligned with the existing backend modules.
 
-### Next Module 1: Schedule Management Frontend
+### Next Module 1: Cashier and Assessment Frontend
 
 Recommended first screens:
 
-- Schedule list/search/filter.
-- Create/update schedules with course, faculty, room, section, school year, semester, capacity, and meetings.
-- Conflict check before save.
-- Archive inactive schedules.
+- Assessment list/search/filter.
+- Assessment detail with itemized fees.
+- Recalculate assessment.
+- Update assessment status.
+- Fee setup and fee rule management if not already comfortable through admin setup.
 
 Suggested frontend stack:
 
@@ -717,7 +756,7 @@ Recommended first audit events:
 
 ## Current Known Limitations
 
-- Admin setup and first registrar/enrollment frontend screens exist, but schedule management, cashier, faculty, student portal, and reporting screens are not built yet.
+- Admin setup, curriculum, schedule, and first registrar/enrollment frontend screens exist, but cashier, faculty, student portal, and reporting screens are not built yet.
 - Audit logs table exists, but no audit service writes events yet.
 - Document storage is local filesystem only.
 - Redis is present in Docker Compose but not meaningfully used yet.
@@ -744,10 +783,12 @@ Current completed modules:
 - Grade recording and academic record updates
 - Backend readiness for admin setup frontend
 - Admin setup frontend
+- Curriculum management frontend
+- Schedule management frontend
 - Registrar and enrollment frontend
 
 Next task:
-Implement the next frontend workflow, starting with schedule management screens.
+Implement the next frontend workflow, starting with cashier and assessment screens.
 
 Please create a plan first if we are in Plan Mode, otherwise implement it directly, run backend tests, run the frontend build, start the backend, start the frontend dev server, and manually verify the new screens.
 ```

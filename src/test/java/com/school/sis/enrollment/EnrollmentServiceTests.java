@@ -12,9 +12,18 @@ import com.school.sis.enrollment.dto.EnrollmentResponse;
 import com.school.sis.enrollment.dto.EnrollmentSubjectRequest;
 import com.school.sis.enrollment.dto.EnrollmentValidationResponse;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
+import com.school.sis.enrollment.entity.EnrollmentSubject;
 import com.school.sis.enrollment.entity.EnrollmentSubjectStatus;
 import com.school.sis.enrollment.repository.EnrollmentStatusHistoryRepository;
+import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
 import com.school.sis.enrollment.service.EnrollmentService;
+import com.school.sis.grade.entity.AcademicRecord;
+import com.school.sis.grade.entity.Grade;
+import com.school.sis.grade.entity.GradeRemark;
+import com.school.sis.grade.entity.GradeStatus;
+import com.school.sis.grade.entity.SpecialGrade;
+import com.school.sis.grade.repository.AcademicRecordRepository;
+import com.school.sis.grade.repository.GradeRepository;
 import com.school.sis.schedule.dto.ScheduleMeetingRequest;
 import com.school.sis.schedule.dto.ScheduleRequest;
 import com.school.sis.schedule.dto.ScheduleResponse;
@@ -55,10 +64,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,6 +84,9 @@ class EnrollmentServiceTests {
     private final EnrollmentService enrollmentService;
     private final ScheduleService scheduleService;
     private final EnrollmentStatusHistoryRepository statusHistoryRepository;
+    private final EnrollmentSubjectRepository enrollmentSubjectRepository;
+    private final GradeRepository gradeRepository;
+    private final AcademicRecordRepository academicRecordRepository;
     private final DepartmentRepository departmentRepository;
     private final ProgramRepository programRepository;
     private final CourseRepository courseRepository;
@@ -107,6 +122,9 @@ class EnrollmentServiceTests {
             EnrollmentService enrollmentService,
             ScheduleService scheduleService,
             EnrollmentStatusHistoryRepository statusHistoryRepository,
+            EnrollmentSubjectRepository enrollmentSubjectRepository,
+            GradeRepository gradeRepository,
+            AcademicRecordRepository academicRecordRepository,
             DepartmentRepository departmentRepository,
             ProgramRepository programRepository,
             CourseRepository courseRepository,
@@ -122,6 +140,9 @@ class EnrollmentServiceTests {
         this.enrollmentService = enrollmentService;
         this.scheduleService = scheduleService;
         this.statusHistoryRepository = statusHistoryRepository;
+        this.enrollmentSubjectRepository = enrollmentSubjectRepository;
+        this.gradeRepository = gradeRepository;
+        this.academicRecordRepository = academicRecordRepository;
         this.departmentRepository = departmentRepository;
         this.programRepository = programRepository;
         this.courseRepository = courseRepository;
@@ -336,15 +357,146 @@ class EnrollmentServiceTests {
     }
 
     @Test
-    void validateReturnsPrerequisiteWarningWithoutBlocking() {
+    void unmetPrerequisiteBlocksValidationAndConfirm() {
+        requirePrerequisite(courseTwo, courseOne);
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
-        ScheduleResponse schedule = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isFalse();
+        assertThat(validation.blockingIssues()).extracting("code").contains("UNMET_PREREQUISITE");
+        assertThat(validation.blockingIssues()).extracting("message")
+                .contains(courseTwo.getCourseCode() + " requires prerequisite " + courseOne.getCourseCode());
+        assertThat(validation.warnings()).isEmpty();
+        assertThatThrownBy(() -> enrollmentService.confirm(enrollment.id()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Enrollment has validation issues");
+    }
+
+    @Test
+    void passedApprovedAcademicRecordSatisfiesPrerequisite() {
+        requirePrerequisite(courseTwo, courseOne);
+        academicRecord(courseOne, GradeRemark.PASSED, GradeStatus.APPROVED, null);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+        EnrollmentResponse confirmed = enrollmentService.confirm(enrollment.id());
+
+        assertThat(validation.valid()).isTrue();
+        assertThat(validation.blockingIssues()).isEmpty();
+        assertThat(confirmed.status()).isEqualTo(EnrollmentStatus.CONFIRMED);
+    }
+
+    @Test
+    void passedLockedAcademicRecordSatisfiesPrerequisite() {
+        requirePrerequisite(courseTwo, courseOne);
+        academicRecord(courseOne, GradeRemark.PASSED, GradeStatus.LOCKED, null);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
 
         EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
 
         assertThat(validation.valid()).isTrue();
-        assertThat(validation.warnings()).extracting("code").contains("PREREQUISITES_NOT_EVALUATED");
+    }
+
+    @Test
+    void failedAcademicRecordDoesNotSatisfyPrerequisite() {
+        requirePrerequisite(courseTwo, courseOne);
+        academicRecord(courseOne, GradeRemark.FAILED, GradeStatus.APPROVED, null);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isFalse();
+        assertThat(validation.blockingIssues()).extracting("code").contains("UNMET_PREREQUISITE");
+    }
+
+    @Test
+    void specialGradeAcademicRecordDoesNotSatisfyPrerequisite() {
+        requirePrerequisite(courseTwo, courseOne);
+        academicRecord(courseOne, GradeRemark.INCOMPLETE, GradeStatus.APPROVED, SpecialGrade.INC);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isFalse();
+        assertThat(validation.blockingIssues()).extracting("code").contains("UNMET_PREREQUISITE");
+    }
+
+    @Test
+    void missingCorequisiteBlocksValidationAndConfirm() {
+        requireCorequisite(courseTwo, courseThree);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isFalse();
+        assertThat(validation.blockingIssues()).extracting("code").contains("MISSING_COREQUISITE");
+        assertThat(validation.blockingIssues()).extracting("message")
+                .contains(courseTwo.getCourseCode() + " requires corequisite " + courseThree.getCourseCode());
+        assertThatThrownBy(() -> enrollmentService.confirm(enrollment.id()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Enrollment has validation issues");
+    }
+
+    @Test
+    void selectedCorequisiteSatisfiesValidation() {
+        requireCorequisite(courseTwo, courseThree);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse main = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        ScheduleResponse corequisite = schedule(courseThree, sectionA, facultyTwo, roomTwo, DayOfWeek.FRIDAY, "10:00", "11:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(main.id()));
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(corequisite.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isTrue();
+        assertThat(validation.blockingIssues()).isEmpty();
+    }
+
+    @Test
+    void passedCorequisiteSatisfiesValidation() {
+        requireCorequisite(courseTwo, courseThree);
+        academicRecord(courseThree, GradeRemark.PASSED, GradeStatus.LOCKED, null);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isTrue();
+    }
+
+    @Test
+    void droppedSubjectDoesNotSatisfyCorequisite() {
+        requireCorequisite(courseTwo, courseThree);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse main = schedule(courseTwo, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
+        ScheduleResponse corequisite = schedule(courseThree, sectionA, facultyTwo, roomTwo, DayOfWeek.FRIDAY, "10:00", "11:00");
+        enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(main.id()));
+        EnrollmentResponse withCorequisite = enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(corequisite.id()));
+
+        UUID corequisiteSubjectId = withCorequisite.subjects().stream()
+                .filter(subject -> subject.courseId().equals(courseThree.getId()))
+                .findFirst()
+                .orElseThrow()
+                .id();
+        enrollmentService.dropSubject(enrollment.id(), corequisiteSubjectId);
+        EnrollmentValidationResponse validation = enrollmentService.validate(enrollment.id());
+
+        assertThat(validation.valid()).isFalse();
+        assertThat(validation.blockingIssues()).extracting("code").contains("MISSING_COREQUISITE");
     }
 
     private EnrollmentRequest enrollmentRequest(UUID sectionId) {
@@ -419,7 +571,7 @@ class EnrollmentServiceTests {
         return sectionRepository.save(section);
     }
 
-    private void curriculumCourse(Curriculum curriculum, Course course, int sortOrder) {
+    private CurriculumCourse curriculumCourse(Curriculum curriculum, Course course, int sortOrder) {
         CurriculumCourse curriculumCourse = new CurriculumCourse();
         curriculumCourse.setCurriculum(curriculum);
         curriculumCourse.setYearLevel(1);
@@ -427,6 +579,75 @@ class EnrollmentServiceTests {
         curriculumCourse.setCourse(course);
         curriculumCourse.setSortOrder(sortOrder);
         curriculumCourse.setRequiredStatus(RequiredStatus.REQUIRED);
+        return curriculumCourseRepository.save(curriculumCourse);
+    }
+
+    private void requirePrerequisite(Course course, Course prerequisite) {
+        CurriculumCourse curriculumCourse = curriculumCourseFor(course);
+        curriculumCourse.setPrerequisites(new LinkedHashSet<>(Set.of(prerequisite)));
         curriculumCourseRepository.save(curriculumCourse);
+    }
+
+    private void requireCorequisite(Course course, Course corequisite) {
+        CurriculumCourse curriculumCourse = curriculumCourseFor(course);
+        curriculumCourse.setCorequisites(new LinkedHashSet<>(Set.of(corequisite)));
+        curriculumCourseRepository.save(curriculumCourse);
+    }
+
+    private CurriculumCourse curriculumCourseFor(Course course) {
+        return curriculumCourseRepository.findByCurriculumIdOrderByYearLevelAscSemesterAscSortOrderAsc(student.getCurriculum().getId())
+                .stream()
+                .filter(curriculumCourse -> curriculumCourse.getCourse().getId().equals(course.getId()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private void academicRecord(Course course, GradeRemark remark, GradeStatus status, SpecialGrade specialGrade) {
+        EnrollmentResponse previousEnrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        ScheduleResponse schedule = schedule(course, sectionA, facultyThree, roomThree, DayOfWeek.SATURDAY, "07:00", "08:00");
+        EnrollmentResponse withSubject = enrollmentService.addSubject(previousEnrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
+        enrollmentService.cancel(previousEnrollment.id());
+        EnrollmentSubject subject = enrollmentSubjectRepository.findById(withSubject.subjects().getFirst().id()).orElseThrow();
+
+        Grade grade = new Grade();
+        grade.setEnrollmentSubject(subject);
+        grade.setStudent(student);
+        grade.setClassSchedule(subject.getClassSchedule());
+        grade.setCourse(course);
+        grade.setSection(sectionA);
+        grade.setFaculty(facultyThree);
+        grade.setSchoolYear(schoolYear);
+        grade.setSemester(semester);
+        if (specialGrade == null) {
+            grade.setFinalGrade(remark == GradeRemark.PASSED ? BigDecimal.valueOf(1.00) : BigDecimal.valueOf(5.00));
+        } else {
+            grade.setSpecialGrade(specialGrade);
+        }
+        grade.setRemark(remark);
+        grade.setStatus(status);
+        grade.setApprovedAt(Instant.now());
+        if (status == GradeStatus.LOCKED) {
+            grade.setLockedAt(Instant.now());
+        }
+        grade = gradeRepository.save(grade);
+
+        AcademicRecord record = new AcademicRecord();
+        record.setGrade(grade);
+        record.setStudent(student);
+        record.setProgram(program);
+        record.setCurriculum(student.getCurriculum());
+        record.setSchoolYear(schoolYear);
+        record.setSemester(semester);
+        record.setCourse(course);
+        record.setFaculty(facultyThree);
+        record.setFinalGrade(grade.getFinalGrade());
+        record.setSpecialGrade(grade.getSpecialGrade());
+        record.setRemark(remark);
+        record.setGradeStatus(status);
+        record.setCreditUnits(course.getCreditUnits());
+        record.setEarnedUnits(remark == GradeRemark.PASSED ? course.getCreditUnits() : BigDecimal.ZERO);
+        record.setApprovedAt(grade.getApprovedAt());
+        record.setLockedAt(grade.getLockedAt());
+        academicRecordRepository.save(record);
     }
 }
