@@ -12,7 +12,7 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 
 ## Code Layout
 - TypeScript types: `frontend/src/lib/types.ts`
-- Query/Mutation hooks: `frontend/src/hooks/use-setup.ts` and `frontend/src/hooks/use-curriculum.ts`
+- Query/Mutation hooks: `frontend/src/hooks/use-setup.ts`, `frontend/src/hooks/use-curriculum.ts`, and `frontend/src/hooks/use-students.ts`
 - App routes/sidebar: `frontend/src/App.tsx`
 - Parent Layout component: `frontend/src/pages/setup/setup-layout.tsx`
 - Setup sub-module tab pages:
@@ -26,6 +26,7 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
   - Sections: `frontend/src/pages/setup/sections-tab.tsx`
   - Curricula: `frontend/src/pages/setup/curricula-tab.tsx`
   - Curriculum Builder: `frontend/src/pages/setup/curriculum-builder.tsx`
+- Student Profiling page: `frontend/src/pages/students-page.tsx`
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -35,9 +36,10 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 | 3 | Department-Linked Data CRUD | Programs, Courses, Faculty CRUD | M2 | DONE |
 | 4 | Operational Data CRUD | Sections CRUD & Final Integration | M3 | DONE |
 | 5 | E2E Verification & Hardening | E2E Test Suite verification (Tiers 1-4) & adversarial hardening (Tier 5) | M4, E2E Testing Track | DONE |
-| 6 | Curriculum Listing & CRUD UI | Create curricula tab, list from API, create/update/delete curricula forms | M3 | PLANNED |
-| 7 | Curriculum Builder & course assignment | Term-grouped view, assign course modal with pre-req/co-req multi-select | M6 | PLANNED |
-| 8 | E2E Verification & Build | Ensure clean build and TypeScript compilation, verify E2E suite | M7 | PLANNED |
+| 6 | Curriculum Listing & CRUD UI | Create curricula tab, list from API, create/update/delete curricula forms | M3 | DONE |
+| 7 | Curriculum Builder & course assignment | Term-grouped view, assign course modal with pre-req/co-req multi-select | M6 | DONE |
+| 8 | E2E Verification & Build | Ensure clean build and TypeScript compilation, verify E2E suite | M7 | DONE |
+| 9 | Student Profiling Frontend | Student searchable list, tabbed profile forms, document management, and clean build | M3 | DONE |
 
 ## Interface Contracts
 
@@ -49,6 +51,12 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 - **`FacultyType`**: `"INSTRUCTOR" | "PROFESSOR" | "LECTURER" | "DEAN" | "PROGRAM_HEAD"`
 - **`CurriculumStatus`**: `"DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED"`
 - **`RequiredStatus`**: `"REQUIRED" | "OPTIONAL" | "ELECTIVE"`
+- **`Gender`**: `"MALE" | "FEMALE" | "OTHER"`
+- **`StudentStatus`**: `"APPLICANT" | "ACTIVE" | "ENROLLED" | "INACTIVE" | "DROPPED" | "TRANSFERRED" | "GRADUATED" | "ARCHIVED"`
+- **`StudentClassification`**: `"REGULAR" | "IRREGULAR" | "TRANSFEREE" | "RETURNEE" | "CROSS_ENROLLEE" | "GRADUATING"`
+- **`AcademicStatus`**: `"REGULAR" | "IRREGULAR" | "PROBATION" | "CANDIDATE_FOR_GRADUATION" | "GRADUATED" | "DISMISSED" | "ON_LEAVE"`
+- **`AdmissionType`**: `"NEW_STUDENT" | "TRANSFEREE" | "RETURNEE" | "SHIFTEE" | "CROSS_ENROLLEE" | "CONTINUING_STUDENT"`
+- **`DocumentVerificationStatus`**: `"PENDING" | "SUBMITTED" | "VERIFIED" | "REJECTED" | "MISSING"`
 
 ### 2. API Endpoint Matrix
 
@@ -99,6 +107,15 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 | | `POST` | `/api/v1/curricula/{id}/courses` | `CurriculumCourseRequest` | `ApiResponse<CurriculumCourseResponse>` | `CURRICULUM_MANAGE` |
 | | `PUT` | `/api/v1/curricula/{id}/courses/{ccId}` | `CurriculumCourseRequest` | `ApiResponse<CurriculumCourseResponse>` | `CURRICULUM_MANAGE` |
 | | `DELETE` | `/api/v1/curricula/{id}/courses/{ccId}` | N/A | `ApiResponse<Void>` | `CURRICULUM_MANAGE` |
+| **Students** | `GET` | `/api/v1/students` | Parameters: `search` (Optional String), `programId` (UUID), `yearLevel` (Integer), `sectionId` (UUID), `status` (StudentStatus), `schoolYearAdmitted` (String), `documentStatus` (DocumentVerificationStatus), `page`, `size` | `ApiResponse<PageResponse<StudentSummaryResponse>>` | `STUDENT_VIEW` |
+| | `POST` | `/api/v1/students` | `StudentRequest` | `ApiResponse<StudentResponse>` | `STUDENT_CREATE` |
+| | `GET` | `/api/v1/students/{id}` | N/A | `ApiResponse<StudentResponse>` | `STUDENT_VIEW` |
+| | `PUT` | `/api/v1/students/{id}` | `StudentRequest` | `ApiResponse<StudentResponse>` | `STUDENT_UPDATE` |
+| | `PATCH` | `/api/v1/students/{id}/status` | `StudentStatusRequest` | `ApiResponse<StudentResponse>` | `STUDENT_UPDATE` |
+| | `POST` | `/api/v1/students/{id}/documents` | Multipart Form: `file`, Parameter: `documentType`, `remarks` | `ApiResponse<StudentDocumentResponse>` | `STUDENT_UPDATE` |
+| | `GET` | `/api/v1/students/{id}/documents` | N/A | `ApiResponse<List<StudentDocumentResponse>>` | `STUDENT_VIEW` |
+| | `PATCH` | `/api/v1/students/{id}/documents/{docId}/verify` | `DocumentVerificationRequest` | `ApiResponse<StudentDocumentResponse>` | `STUDENT_UPDATE` |
+| | `GET` | `/api/v1/students/{id}/academic-records` | N/A | `ApiResponse<StudentAcademicRecordsResponse>` | `STUDENT_VIEW` |
 
 ### 3. Verification Constraints (Zod Validations)
 All frontend forms must validate inputs to match the backend JSR-380 annotations:

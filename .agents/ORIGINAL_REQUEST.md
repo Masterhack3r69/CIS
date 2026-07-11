@@ -61,3 +61,32 @@ The implementation must be verified programmatically by ensuring the React appli
 - [ ] Users can successfully assign a new course to a specific Year/Semester block using a modal dialog.
 - [ ] The course assignment modal allows users to select and save pre-requisite courses.
 - [ ] The frontend builds successfully (`npm run build`) with zero TypeScript errors.
+
+## Follow-up — 2026-07-11T12:15:44Z
+
+Build the React frontend workflows for the Student Profiling module. The interface should integrate with the existing Java backend APIs to display, create, and manage comprehensive student profiles (including personal details, contact info, family background, educational history, and documents).
+
+Working directory: `c:\Users\PC\Projects\cis`
+Integrity mode: development
+
+## Requirements
+
+### R1. Student List View
+Build a searchable data table to display all students. It should allow navigation to individual student profiles.
+
+### R2. Tabbed Profile View
+Implement a detailed Student Profile view using a tabbed interface. The tabs should logically organize the data into categories: Personal Details, Contact Information, Family Background, Educational History, and Documents.
+
+### R3. Backend Schema Alignment
+The frontend components and data types must strictly align with the existing backend Java entities located in `c:\Users\PC\Projects\cis\src\main\java\com\school\sis\student\entity\*` (e.g., `Student`, `StudentContact`, `StudentEducationalBackground`, etc.). Note that the backend root is `c:\Users\PC\Projects\cis\src`, not `backend/src`.
+
+## Acceptance Criteria
+
+### Implementation Quality
+- [ ] A dedicated "Students" route exists and renders the student data table.
+- [ ] The Student Profile view successfully implements a tabbed navigation structure.
+- [ ] Frontend types and form schemas for the Student module accurately mirror the backend database relationships.
+
+### Verification
+- [ ] Running `npm run build` succeeds without any TypeScript errors related to the new student components.
+- [ ] The Student list and tabbed profile views render in the browser without runtime crashes.

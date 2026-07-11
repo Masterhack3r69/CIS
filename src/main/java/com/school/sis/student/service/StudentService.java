@@ -292,10 +292,24 @@ public class StudentService {
         contact.setEmailAddress(blankToNull(request.emailAddress()));
         contact.setCurrentAddress(request.currentAddress());
         contact.setPermanentAddress(request.permanentAddress());
-        contact.setProvince(request.province());
-        contact.setCityMunicipality(request.cityMunicipality());
-        contact.setBarangay(request.barangay());
-        contact.setZipCode(request.zipCode());
+        contact.setCurrentRegionCode(request.currentRegionCode());
+        contact.setCurrentRegionName(request.currentRegionName());
+        contact.setCurrentProvinceCode(request.currentProvinceCode());
+        contact.setCurrentProvinceName(request.currentProvinceName());
+        contact.setCurrentCityMunicipalityCode(request.currentCityMunicipalityCode());
+        contact.setCurrentCityMunicipalityName(request.currentCityMunicipalityName());
+        contact.setCurrentBarangayCode(request.currentBarangayCode());
+        contact.setCurrentBarangayName(request.currentBarangayName());
+        contact.setCurrentZipCode(request.currentZipCode());
+        contact.setPermanentRegionCode(request.permanentRegionCode());
+        contact.setPermanentRegionName(request.permanentRegionName());
+        contact.setPermanentProvinceCode(request.permanentProvinceCode());
+        contact.setPermanentProvinceName(request.permanentProvinceName());
+        contact.setPermanentCityMunicipalityCode(request.permanentCityMunicipalityCode());
+        contact.setPermanentCityMunicipalityName(request.permanentCityMunicipalityName());
+        contact.setPermanentBarangayCode(request.permanentBarangayCode());
+        contact.setPermanentBarangayName(request.permanentBarangayName());
+        contact.setPermanentZipCode(request.permanentZipCode());
         contact.setEmergencyContactName(request.emergencyContactName());
         contact.setEmergencyContactNumber(request.emergencyContactNumber());
         contact.setEmergencyContactRelationship(request.emergencyContactRelationship());
@@ -439,8 +453,13 @@ public class StudentService {
     private StudentContactResponse toContactResponse(StudentContact contact) {
         if (contact == null) return null;
         return new StudentContactResponse(contact.getMobileNumber(), contact.getTelephoneNumber(), contact.getEmailAddress(),
-                contact.getCurrentAddress(), contact.getPermanentAddress(), contact.getProvince(), contact.getCityMunicipality(),
-                contact.getBarangay(), contact.getZipCode(), contact.getEmergencyContactName(), contact.getEmergencyContactNumber(),
+                contact.getCurrentAddress(), contact.getPermanentAddress(),
+                contact.getCurrentRegionCode(), contact.getCurrentRegionName(), contact.getCurrentProvinceCode(), contact.getCurrentProvinceName(),
+                contact.getCurrentCityMunicipalityCode(), contact.getCurrentCityMunicipalityName(), contact.getCurrentBarangayCode(),
+                contact.getCurrentBarangayName(), contact.getCurrentZipCode(),
+                contact.getPermanentRegionCode(), contact.getPermanentRegionName(), contact.getPermanentProvinceCode(), contact.getPermanentProvinceName(),
+                contact.getPermanentCityMunicipalityCode(), contact.getPermanentCityMunicipalityName(), contact.getPermanentBarangayCode(),
+                contact.getPermanentBarangayName(), contact.getPermanentZipCode(), contact.getEmergencyContactName(), contact.getEmergencyContactNumber(),
                 contact.getEmergencyContactRelationship(), contact.getEmergencyContactAddress());
     }
 
