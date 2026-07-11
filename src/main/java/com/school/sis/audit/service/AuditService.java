@@ -19,7 +19,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -41,19 +40,19 @@ public class AuditService {
         this.objectMapper = objectMapper;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public AuditLog log(String action, String module, String entityType, UUID entityId, Object oldValue, Object newValue) {
         return log(resolveCurrentUser(), action, module, entityType, entityId, oldValue, newValue);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public AuditLog log(SisUserDetails userDetails, String action, String module, String entityType, UUID entityId,
                         Object oldValue, Object newValue) {
         User user = userDetails == null ? null : userRepository.findById(userDetails.id()).orElse(null);
         return log(user, action, module, entityType, entityId, oldValue, newValue);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public AuditLog log(User user, String action, String module, String entityType, UUID entityId,
                         Object oldValue, Object newValue) {
         AuditLog log = new AuditLog();

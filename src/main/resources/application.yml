@@ -24,6 +24,8 @@ spring:
       max-request-size: 10MB
 
 sis:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   school:
     name: ${SCHOOL_NAME:Student Information System}
     address: ${SCHOOL_ADDRESS:}

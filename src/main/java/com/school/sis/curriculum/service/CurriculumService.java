@@ -1,5 +1,7 @@
 package com.school.sis.curriculum.service;
 
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -42,17 +44,20 @@ public class CurriculumService {
     private final CurriculumCourseRepository curriculumCourseRepository;
     private final ProgramRepository programRepository;
     private final CourseRepository courseRepository;
+    private final AuditService auditService;
 
     public CurriculumService(
             CurriculumRepository curriculumRepository,
             CurriculumCourseRepository curriculumCourseRepository,
             ProgramRepository programRepository,
-            CourseRepository courseRepository
+            CourseRepository courseRepository,
+            AuditService auditService
     ) {
         this.curriculumRepository = curriculumRepository;
         this.curriculumCourseRepository = curriculumCourseRepository;
         this.programRepository = programRepository;
         this.courseRepository = courseRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -79,14 +84,19 @@ public class CurriculumService {
     public CurriculumResponse create(CurriculumRequest request) {
         Curriculum curriculum = new Curriculum();
         apply(curriculum, request);
-        return toResponse(curriculumRepository.save(curriculum));
+        CurriculumResponse response = toResponse(curriculumRepository.save(curriculum));
+        auditService.log("CURRICULUM_CREATED", AuditModule.CURRICULUM, "Curriculum", response.id(), null, response);
+        return response;
     }
 
     @Transactional
     public CurriculumResponse update(UUID id, CurriculumRequest request) {
         Curriculum curriculum = findCurriculum(id);
+        CurriculumResponse before = toResponse(curriculum);
         apply(curriculum, request);
-        return toResponse(curriculum);
+        CurriculumResponse after = toResponse(curriculum);
+        auditService.log("CURRICULUM_UPDATED", AuditModule.CURRICULUM, "Curriculum", id, before, after);
+        return after;
     }
 
     @Transactional
@@ -96,21 +106,28 @@ public class CurriculumService {
         CurriculumCourse curriculumCourse = new CurriculumCourse();
         curriculumCourse.setCurriculum(curriculum);
         apply(curriculumCourse, request);
-        return toCourseResponse(curriculumCourseRepository.save(curriculumCourse));
+        CurriculumCourseResponse response = toCourseResponse(curriculumCourseRepository.save(curriculumCourse));
+        auditService.log("CURRICULUM_COURSE_ADDED", AuditModule.CURRICULUM, "CurriculumCourse", response.id(), null, response);
+        return response;
     }
 
     @Transactional
     public CurriculumCourseResponse updateCourse(UUID curriculumId, UUID curriculumCourseId, CurriculumCourseRequest request) {
         CurriculumCourse curriculumCourse = findCurriculumCourse(curriculumId, curriculumCourseId);
+        CurriculumCourseResponse before = toCourseResponse(curriculumCourse);
         ensureNoDuplicate(curriculumId, curriculumCourseId, request);
         apply(curriculumCourse, request);
-        return toCourseResponse(curriculumCourse);
+        CurriculumCourseResponse after = toCourseResponse(curriculumCourse);
+        auditService.log("CURRICULUM_COURSE_UPDATED", AuditModule.CURRICULUM, "CurriculumCourse", curriculumCourseId, before, after);
+        return after;
     }
 
     @Transactional
     public void deleteCourse(UUID curriculumId, UUID curriculumCourseId) {
         CurriculumCourse curriculumCourse = findCurriculumCourse(curriculumId, curriculumCourseId);
+        CurriculumCourseResponse before = toCourseResponse(curriculumCourse);
         curriculumCourseRepository.delete(curriculumCourse);
+        auditService.log("CURRICULUM_COURSE_REMOVED", AuditModule.CURRICULUM, "CurriculumCourse", curriculumCourseId, before, null);
     }
 
     @Transactional(readOnly = true)
@@ -152,7 +169,9 @@ public class CurriculumService {
                 .forEach(active -> active.setStatus(CurriculumStatus.INACTIVE));
         curriculumRepository.flush();
         curriculum.setStatus(CurriculumStatus.ACTIVE);
-        return toResponse(curriculum);
+        CurriculumResponse response = toResponse(curriculum);
+        auditService.log("CURRICULUM_ACTIVATED", AuditModule.CURRICULUM, "Curriculum", curriculumId, null, response);
+        return response;
     }
 
     private void apply(Curriculum curriculum, CurriculumRequest request) {

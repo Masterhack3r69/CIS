@@ -14,6 +14,8 @@ public interface EnrollmentSubjectRepository extends JpaRepository<EnrollmentSub
     Optional<EnrollmentSubject> findByIdAndEnrollmentId(UUID id, UUID enrollmentId);
     boolean existsByEnrollmentIdAndClassScheduleIdAndStatus(UUID enrollmentId, UUID classScheduleId, EnrollmentSubjectStatus status);
     List<EnrollmentSubject> findByEnrollmentIdOrderByCreatedAtAsc(UUID enrollmentId);
+    long countByClassScheduleIdAndStatusAndEnrollmentStatus(UUID scheduleId, EnrollmentSubjectStatus subjectStatus,
+                                                            com.school.sis.enrollment.entity.EnrollmentStatus enrollmentStatus);
 
     @Query("""
             select subject from EnrollmentSubject subject

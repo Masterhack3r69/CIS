@@ -1,5 +1,7 @@
 package com.school.sis.setup.service;
 
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.setup.dto.FacultyRequest;
@@ -20,10 +22,12 @@ public class FacultyService {
 
     private final FacultyRepository facultyRepository;
     private final DepartmentRepository departmentRepository;
+    private final AuditService auditService;
 
-    public FacultyService(FacultyRepository facultyRepository, DepartmentRepository departmentRepository) {
+    public FacultyService(FacultyRepository facultyRepository, DepartmentRepository departmentRepository, AuditService auditService) {
         this.facultyRepository = facultyRepository;
         this.departmentRepository = departmentRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -43,21 +47,30 @@ public class FacultyService {
     public FacultyResponse create(FacultyRequest request) {
         Faculty faculty = new Faculty();
         apply(faculty, request);
-        return toResponse(facultyRepository.save(faculty));
+        FacultyResponse response = toResponse(facultyRepository.save(faculty));
+        auditService.log("FACULTY_CREATED", AuditModule.ACADEMIC_SETUP, "Faculty", response.id(), null, response);
+        return response;
     }
 
     @Transactional
     public FacultyResponse update(UUID id, FacultyRequest request) {
         Faculty faculty = find(id);
+        FacultyResponse before = toResponse(faculty);
         apply(faculty, request);
-        return toResponse(faculty);
+        FacultyResponse after = toResponse(faculty);
+        auditService.log("FACULTY_UPDATED", AuditModule.ACADEMIC_SETUP, "Faculty", id, before, after);
+        return after;
     }
 
     @Transactional
     public FacultyResponse updateStatus(UUID id, ActiveStatus status) {
         Faculty faculty = find(id);
+        ActiveStatus before = faculty.getStatus();
         faculty.setStatus(status);
-        return toResponse(faculty);
+        FacultyResponse response = toResponse(faculty);
+        auditService.log("FACULTY_STATUS_UPDATED", AuditModule.ACADEMIC_SETUP, "Faculty", id,
+                java.util.Map.of("status", before), java.util.Map.of("status", status));
+        return response;
     }
 
     private Faculty find(UUID id) {

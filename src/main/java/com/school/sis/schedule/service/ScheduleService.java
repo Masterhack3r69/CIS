@@ -1,5 +1,7 @@
 package com.school.sis.schedule.service;
 
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.BusinessRuleException;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -16,6 +18,9 @@ import com.school.sis.schedule.entity.ScheduleMeeting;
 import com.school.sis.schedule.entity.ScheduleStatus;
 import com.school.sis.schedule.repository.ClassScheduleRepository;
 import com.school.sis.schedule.repository.ScheduleMeetingRepository;
+import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
+import com.school.sis.enrollment.entity.EnrollmentStatus;
+import com.school.sis.enrollment.entity.EnrollmentSubjectStatus;
 import com.school.sis.setup.entity.ActiveStatus;
 import com.school.sis.setup.entity.Course;
 import com.school.sis.setup.entity.Faculty;
@@ -57,6 +62,8 @@ public class ScheduleService {
     private final RoomRepository roomRepository;
     private final SchoolYearRepository schoolYearRepository;
     private final SemesterRepository semesterRepository;
+    private final AuditService auditService;
+    private final EnrollmentSubjectRepository enrollmentSubjectRepository;
 
     public ScheduleService(
             ClassScheduleRepository classScheduleRepository,
@@ -66,7 +73,9 @@ public class ScheduleService {
             FacultyRepository facultyRepository,
             RoomRepository roomRepository,
             SchoolYearRepository schoolYearRepository,
-            SemesterRepository semesterRepository
+            SemesterRepository semesterRepository,
+            AuditService auditService,
+            EnrollmentSubjectRepository enrollmentSubjectRepository
     ) {
         this.classScheduleRepository = classScheduleRepository;
         this.scheduleMeetingRepository = scheduleMeetingRepository;
@@ -76,6 +85,8 @@ public class ScheduleService {
         this.roomRepository = roomRepository;
         this.schoolYearRepository = schoolYearRepository;
         this.semesterRepository = semesterRepository;
+        this.auditService = auditService;
+        this.enrollmentSubjectRepository = enrollmentSubjectRepository;
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +105,9 @@ public class ScheduleService {
         validateNoConflictsForActiveSchedule(null, request);
         ClassSchedule schedule = new ClassSchedule();
         apply(schedule, request);
-        return toResponse(classScheduleRepository.save(schedule));
+        ScheduleResponse response = toResponse(classScheduleRepository.save(schedule));
+        auditService.log("SCHEDULE_CREATED", AuditModule.SCHEDULE, "ClassSchedule", response.id(), null, response);
+        return response;
     }
 
     @Transactional
@@ -102,14 +115,20 @@ public class ScheduleService {
         validateMeetings(request.meetings());
         validateNoConflictsForActiveSchedule(id, request);
         ClassSchedule schedule = findSchedule(id);
+        ScheduleResponse before = toResponse(schedule);
         apply(schedule, request);
-        return toResponse(schedule);
+        ScheduleResponse after = toResponse(schedule);
+        auditService.log("SCHEDULE_UPDATED", AuditModule.SCHEDULE, "ClassSchedule", id, before, after);
+        return after;
     }
 
     @Transactional
     public void delete(UUID id) {
         ClassSchedule schedule = findSchedule(id);
+        ScheduleStatus before = schedule.getStatus();
         schedule.setStatus(ScheduleStatus.ARCHIVED);
+        auditService.log("SCHEDULE_ARCHIVED", AuditModule.SCHEDULE, "ClassSchedule", id,
+                java.util.Map.of("status", before), java.util.Map.of("status", ScheduleStatus.ARCHIVED));
     }
 
     @Transactional(readOnly = true)
@@ -265,6 +284,8 @@ public class ScheduleService {
     }
 
     private ScheduleResponse toResponse(ClassSchedule schedule) {
+        long enrolledCount = enrollmentSubjectRepository.countByClassScheduleIdAndStatusAndEnrollmentStatus(
+                schedule.getId(), EnrollmentSubjectStatus.ENROLLED, EnrollmentStatus.CONFIRMED);
         return new ScheduleResponse(
                 schedule.getId(),
                 schedule.getSection().getId(),
@@ -272,6 +293,7 @@ public class ScheduleService {
                 schedule.getCourse().getId(),
                 schedule.getCourse().getCourseCode(),
                 schedule.getCourse().getCourseTitle(),
+                schedule.getCourse().getCreditUnits(),
                 schedule.getFaculty().getId(),
                 facultyName(schedule.getFaculty()),
                 schedule.getRoom().getId(),
@@ -281,6 +303,8 @@ public class ScheduleService {
                 schedule.getSemester().getId(),
                 schedule.getSemester().getName(),
                 schedule.getCapacity(),
+                enrolledCount,
+                Math.max(0, schedule.getCapacity() - enrolledCount),
                 schedule.getStatus(),
                 schedule.getMeetings().stream()
                         .sorted(Comparator.comparing(ScheduleMeeting::getDayOfWeek).thenComparing(ScheduleMeeting::getStartTime))

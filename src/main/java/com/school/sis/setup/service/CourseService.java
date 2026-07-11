@@ -1,5 +1,7 @@
 package com.school.sis.setup.service;
 
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
 import com.school.sis.setup.dto.CourseRequest;
@@ -18,10 +20,12 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final DepartmentService departmentService;
+    private final AuditService auditService;
 
-    public CourseService(CourseRepository courseRepository, DepartmentService departmentService) {
+    public CourseService(CourseRepository courseRepository, DepartmentService departmentService, AuditService auditService) {
         this.courseRepository = courseRepository;
         this.departmentService = departmentService;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -41,14 +45,19 @@ public class CourseService {
     public CourseResponse create(CourseRequest request) {
         Course course = new Course();
         apply(course, request);
-        return toResponse(courseRepository.save(course));
+        CourseResponse response = toResponse(courseRepository.save(course));
+        auditService.log("COURSE_CREATED", AuditModule.ACADEMIC_SETUP, "Course", response.id(), null, response);
+        return response;
     }
 
     @Transactional
     public CourseResponse update(UUID id, CourseRequest request) {
         Course course = find(id);
+        CourseResponse before = toResponse(course);
         apply(course, request);
-        return toResponse(course);
+        CourseResponse after = toResponse(course);
+        auditService.log("COURSE_UPDATED", AuditModule.ACADEMIC_SETUP, "Course", id, before, after);
+        return after;
     }
 
     Course find(UUID id) {

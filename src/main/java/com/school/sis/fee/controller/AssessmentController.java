@@ -52,6 +52,12 @@ public class AssessmentController {
         return ApiResponse.success("Assessment retrieved", assessmentService.get(id));
     }
 
+    @GetMapping("/enrollments/{enrollmentId}/assessment")
+    @PreAuthorize("hasAnyAuthority('FEE_MANAGE', 'ENROLLMENT_VIEW')")
+    public ApiResponse<AssessmentResponse> getByEnrollment(@PathVariable UUID enrollmentId) {
+        return ApiResponse.success("Assessment retrieved", assessmentService.getByEnrollment(enrollmentId));
+    }
+
     @PostMapping("/enrollments/{enrollmentId}/generate-assessment")
     @PreAuthorize("hasAuthority('FEE_MANAGE')")
     public ApiResponse<AssessmentResponse> generate(@PathVariable UUID enrollmentId) {

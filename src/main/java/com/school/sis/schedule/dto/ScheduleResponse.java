@@ -4,6 +4,7 @@ import com.school.sis.schedule.entity.ScheduleStatus;
 
 import java.util.List;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 public record ScheduleResponse(
         UUID id,
@@ -12,6 +13,7 @@ public record ScheduleResponse(
         UUID courseId,
         String courseCode,
         String courseTitle,
+        BigDecimal creditUnits,
         UUID facultyId,
         String facultyName,
         UUID roomId,
@@ -21,6 +23,8 @@ public record ScheduleResponse(
         UUID semesterId,
         String semesterName,
         Integer capacity,
+        long enrolledCount,
+        long availableSeats,
         ScheduleStatus status,
         List<ScheduleMeetingResponse> meetings
 ) {

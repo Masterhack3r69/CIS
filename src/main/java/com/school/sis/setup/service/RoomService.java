@@ -1,4 +1,6 @@
 package com.school.sis.setup.service;
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -17,9 +19,11 @@ import java.util.UUID;
 public class RoomService {
 
     private final RoomRepository roomRepository;
+    private final AuditService auditService;
 
-    public RoomService(RoomRepository roomRepository) {
+    public RoomService(RoomRepository roomRepository, AuditService auditService) {
         this.roomRepository = roomRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -39,21 +43,23 @@ public class RoomService {
     public RoomResponse create(RoomRequest request) {
         Room room = new Room();
         apply(room, request);
-        return toResponse(roomRepository.save(room));
+        RoomResponse response = toResponse(roomRepository.save(room)); auditService.log("ROOM_CREATED", AuditModule.ACADEMIC_SETUP, "Room", response.id(), null, response); return response;
     }
 
     @Transactional
     public RoomResponse update(UUID id, RoomRequest request) {
         Room room = find(id);
+        RoomResponse before = toResponse(room);
         apply(room, request);
-        return toResponse(room);
+        RoomResponse after = toResponse(room); auditService.log("ROOM_UPDATED", AuditModule.ACADEMIC_SETUP, "Room", id, before, after); return after;
     }
 
     @Transactional
     public RoomResponse updateStatus(UUID id, ActiveStatus status) {
         Room room = find(id);
+        ActiveStatus before = room.getStatus();
         room.setStatus(status);
-        return toResponse(room);
+        RoomResponse response = toResponse(room); auditService.log("ROOM_STATUS_UPDATED", AuditModule.ACADEMIC_SETUP, "Room", id, java.util.Map.of("status", before), java.util.Map.of("status", status)); return response;
     }
 
     private Room find(UUID id) {

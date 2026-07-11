@@ -576,9 +576,9 @@ Verified by automated tests:
 - Successful generation records a generated report log row.
 - Missing report targets return not found errors.
 
-### Next Module 1: Audit Logging
+### Completed Follow-Up: Audit Logging and User Administration
 
-Build next.
+Audit logging and Super Admin user administration have now been implemented.
 
 Recommended first audit events:
 
@@ -589,6 +589,31 @@ Recommended first audit events:
 - Enrollment creation, confirmation, and cancellation.
 - Fee setup changes and assessment generation.
 - Grade encoding, submission, approval, and locking.
+
+Additional implemented behavior:
+
+- Search audit logs by module, action, user, entity, and date range.
+- Capture request IP address and user agent.
+- Audit academic setup, curriculum, schedule, user, role, enrollment, fee, grade, student, and report mutations.
+- Manage users, role assignments, faculty links, account status, passwords, and role permissions.
+- Prevent self-deactivation, self-removal of Super Admin access, and removal of the last active Super Admin.
+- Revoke refresh tokens on deactivation and password reset.
+
+Migration:
+
+- `src/main/resources/db/migration/V8__audit_search_indexes.sql`
+
+Administration endpoints:
+
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `GET /api/v1/users/{id}`
+- `PUT /api/v1/users/{id}`
+- `PATCH /api/v1/users/{id}/status`
+- `POST /api/v1/users/{id}/reset-password`
+- `GET /api/v1/roles`
+- `PUT /api/v1/roles/{id}/permissions`
+- `GET /api/v1/audit-logs`
 
 ### Next Module 2: Frontend Workflows
 
@@ -603,7 +628,7 @@ Recommended first reports:
 ## Current Known Limitations
 
 - No frontend has been built yet.
-- Audit logs table exists, but no audit service writes events yet.
+- Audit payloads intentionally omit passwords, tokens, and uploaded file contents.
 - Document storage is local filesystem only.
 - Redis is present in Docker Compose but not meaningfully used yet.
 - No hard-delete workflows are implemented for academic records.
@@ -630,7 +655,7 @@ Current completed modules:
 - Reports and PDFs
 
 Next task:
-Implement Audit Logging as described in TODAY_PROGRESS_AND_NEXT_STEPS.md.
+Build the first frontend workflow for registrar users, then faculty, cashier, and Super Admin workflows.
 
 Please create a plan first if we are in Plan Mode, otherwise implement it directly, run mvn test, restart the backend, and manually verify the audit events.
 ```

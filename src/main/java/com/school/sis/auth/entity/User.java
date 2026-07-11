@@ -11,6 +11,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -50,7 +51,12 @@ public class User extends AuditableEntity {
     )
     private Set<Role> roles = new HashSet<>();
 
-    protected User() {
+    public User() {
+    }
+
+    @PrePersist
+    void prePersist() {
+        if (id == null) id = UUID.randomUUID();
     }
 
     public UUID getId() {
@@ -60,6 +66,11 @@ public class User extends AuditableEntity {
     public String getEmail() {
         return email;
     }
+    public void setEmail(String email) { this.email = email; }
+    public void setUsername(String username) { this.username = username; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
+    public void setActive(boolean active) { this.active = active; }
 
     public String getUsername() {
         return username;

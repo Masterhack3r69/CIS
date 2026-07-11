@@ -21,7 +21,8 @@ Spring Boot 3 / Java 21 backend scaffold for the college SIS described in `PROJE
 - Fee setup and assessment APIs with fee rules, itemized enrollment assessment generation, recalculation, and status tracking
 - Grade recording APIs with faculty ownership checks, class grade workflow, locking, and academic record updates
 - Reports and PDF generation APIs for core registrar, cashier, and faculty documents
-- Audit tracking tables reserved for later workflows
+- Searchable audit logs covering authentication and sensitive domain mutations
+- Super Admin user, role, permission, faculty-link, account-status, and password-reset administration
 
 ## Local Run
 
@@ -30,6 +31,8 @@ Start PostgreSQL and the backend:
 ```powershell
 docker compose up --build
 ```
+
+Open the Registrar frontend at `http://localhost:3000`. For hot-reload development, run `npm run dev` from `frontend/` and open `http://localhost:5173`.
 
 Default seeded admin:
 
@@ -177,14 +180,34 @@ Reports:
 - `GET /api/v1/reports/classes/{scheduleId}/grade-sheet`
 - `GET /api/v1/reports/students/{id}/grade-slip`
 
+Administration and audit:
+
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `GET /api/v1/users/{id}`
+- `PUT /api/v1/users/{id}`
+- `PATCH /api/v1/users/{id}/status`
+- `POST /api/v1/users/{id}/reset-password`
+- `GET /api/v1/roles`
+- `PUT /api/v1/roles/{id}/permissions`
+- `GET /api/v1/audit-logs`
+
 ## Verify
 
 ```powershell
 mvn test
 ```
 
+The test suite includes a PostgreSQL Testcontainers migration test. When Docker is available it creates an empty PostgreSQL 16 database, applies Flyway V1-V8, and starts Hibernate with schema validation enabled.
+
+Inspect the local database before applying changes:
+
+```powershell
+docker compose exec -T postgres psql -U sis_user -d sis_db -c "SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;"
+```
+
 ## Next Implementation Slice
 
-1. Add audit logging around sensitive workflows.
-2. Build frontend workflows for registrar, cashier, and faculty users.
-3. Add production polish such as dashboards, backups, and deployment hardening.
+1. Build frontend workflows for registrar, cashier, faculty, and Super Admin users.
+2. Add end-to-end tests for the complete student lifecycle.
+3. Add production polish such as persistent document storage, dashboards, backups, HTTPS, and deployment hardening.

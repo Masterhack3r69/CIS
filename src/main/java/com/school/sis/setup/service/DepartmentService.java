@@ -1,4 +1,6 @@
 package com.school.sis.setup.service;
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -17,9 +19,11 @@ import java.util.UUID;
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
+    private final AuditService auditService;
 
-    public DepartmentService(DepartmentRepository departmentRepository) {
+    public DepartmentService(DepartmentRepository departmentRepository, AuditService auditService) {
         this.departmentRepository = departmentRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -39,21 +43,23 @@ public class DepartmentService {
     public DepartmentResponse create(DepartmentRequest request) {
         Department department = new Department();
         apply(department, request);
-        return toResponse(departmentRepository.save(department));
+        DepartmentResponse response = toResponse(departmentRepository.save(department)); auditService.log("DEPARTMENT_CREATED", AuditModule.ACADEMIC_SETUP, "Department", response.id(), null, response); return response;
     }
 
     @Transactional
     public DepartmentResponse update(UUID id, DepartmentRequest request) {
         Department department = find(id);
+        DepartmentResponse before = toResponse(department);
         apply(department, request);
-        return toResponse(department);
+        DepartmentResponse after = toResponse(department); auditService.log("DEPARTMENT_UPDATED", AuditModule.ACADEMIC_SETUP, "Department", id, before, after); return after;
     }
 
     @Transactional
     public DepartmentResponse updateStatus(UUID id, ActiveStatus status) {
         Department department = find(id);
+        ActiveStatus before = department.getStatus();
         department.setStatus(status);
-        return toResponse(department);
+        DepartmentResponse response = toResponse(department); auditService.log("DEPARTMENT_STATUS_UPDATED", AuditModule.ACADEMIC_SETUP, "Department", id, java.util.Map.of("status", before), java.util.Map.of("status", status)); return response;
     }
 
     Department find(UUID id) {

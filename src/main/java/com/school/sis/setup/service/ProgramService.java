@@ -1,4 +1,6 @@
 package com.school.sis.setup.service;
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -18,10 +20,12 @@ public class ProgramService {
 
     private final ProgramRepository programRepository;
     private final DepartmentService departmentService;
+    private final AuditService auditService;
 
-    public ProgramService(ProgramRepository programRepository, DepartmentService departmentService) {
+    public ProgramService(ProgramRepository programRepository, DepartmentService departmentService, AuditService auditService) {
         this.programRepository = programRepository;
         this.departmentService = departmentService;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -41,14 +45,15 @@ public class ProgramService {
     public ProgramResponse create(ProgramRequest request) {
         Program program = new Program();
         apply(program, request);
-        return toResponse(programRepository.save(program));
+        ProgramResponse response = toResponse(programRepository.save(program)); auditService.log("PROGRAM_CREATED", AuditModule.ACADEMIC_SETUP, "Program", response.id(), null, response); return response;
     }
 
     @Transactional
     public ProgramResponse update(UUID id, ProgramRequest request) {
         Program program = find(id);
+        ProgramResponse before = toResponse(program);
         apply(program, request);
-        return toResponse(program);
+        ProgramResponse after = toResponse(program); auditService.log("PROGRAM_UPDATED", AuditModule.ACADEMIC_SETUP, "Program", id, before, after); return after;
     }
 
     Program find(UUID id) {

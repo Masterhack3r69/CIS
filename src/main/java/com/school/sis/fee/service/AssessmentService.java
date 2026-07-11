@@ -65,6 +65,12 @@ public class AssessmentService {
         return toResponse(findAssessment(id));
     }
 
+    @Transactional(readOnly = true)
+    public AssessmentResponse getByEnrollment(UUID enrollmentId) {
+        return toResponse(assessmentRepository.findByEnrollmentId(enrollmentId)
+                .orElseThrow(() -> new NotFoundException("Assessment not found for this enrollment")));
+    }
+
     @Transactional
     public AssessmentResponse generate(UUID enrollmentId) {
         if (assessmentRepository.existsByEnrollmentId(enrollmentId)) {

@@ -1,4 +1,6 @@
 package com.school.sis.setup.service;
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -16,9 +18,11 @@ import java.util.UUID;
 public class SchoolYearService {
 
     private final SchoolYearRepository schoolYearRepository;
+    private final AuditService auditService;
 
-    public SchoolYearService(SchoolYearRepository schoolYearRepository) {
+    public SchoolYearService(SchoolYearRepository schoolYearRepository, AuditService auditService) {
         this.schoolYearRepository = schoolYearRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -35,14 +39,15 @@ public class SchoolYearService {
     public SchoolYearResponse create(SchoolYearRequest request) {
         SchoolYear schoolYear = new SchoolYear();
         apply(schoolYear, request);
-        return toResponse(schoolYearRepository.save(schoolYear));
+        SchoolYearResponse response = toResponse(schoolYearRepository.save(schoolYear)); auditService.log("SCHOOL_YEAR_CREATED", AuditModule.ACADEMIC_SETUP, "SchoolYear", response.id(), null, response); return response;
     }
 
     @Transactional
     public SchoolYearResponse update(UUID id, SchoolYearRequest request) {
         SchoolYear schoolYear = find(id);
+        SchoolYearResponse before = toResponse(schoolYear);
         apply(schoolYear, request);
-        return toResponse(schoolYear);
+        SchoolYearResponse after = toResponse(schoolYear); auditService.log("SCHOOL_YEAR_UPDATED", AuditModule.ACADEMIC_SETUP, "SchoolYear", id, before, after); return after;
     }
 
     private SchoolYear find(UUID id) {

@@ -1,4 +1,6 @@
 package com.school.sis.setup.service;
+import com.school.sis.audit.AuditModule;
+import com.school.sis.audit.service.AuditService;
 
 import com.school.sis.common.exception.NotFoundException;
 import com.school.sis.common.response.PageResponse;
@@ -16,9 +18,11 @@ import java.util.UUID;
 public class SemesterService {
 
     private final SemesterRepository semesterRepository;
+    private final AuditService auditService;
 
-    public SemesterService(SemesterRepository semesterRepository) {
+    public SemesterService(SemesterRepository semesterRepository, AuditService auditService) {
         this.semesterRepository = semesterRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -35,14 +39,15 @@ public class SemesterService {
     public SemesterResponse create(SemesterRequest request) {
         Semester semester = new Semester();
         apply(semester, request);
-        return toResponse(semesterRepository.save(semester));
+        SemesterResponse response = toResponse(semesterRepository.save(semester)); auditService.log("SEMESTER_CREATED", AuditModule.ACADEMIC_SETUP, "Semester", response.id(), null, response); return response;
     }
 
     @Transactional
     public SemesterResponse update(UUID id, SemesterRequest request) {
         Semester semester = find(id);
+        SemesterResponse before = toResponse(semester);
         apply(semester, request);
-        return toResponse(semester);
+        SemesterResponse after = toResponse(semester); auditService.log("SEMESTER_UPDATED", AuditModule.ACADEMIC_SETUP, "Semester", id, before, after); return after;
     }
 
     private Semester find(UUID id) {
