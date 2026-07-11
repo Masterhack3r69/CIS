@@ -25,13 +25,13 @@ Build the React frontend workflows for the Academic Setup module, including Depa
    - Escalate: report to parent (sub-orchestrators only, last resort)
 4. **Succession**: Self-succeed at spawn count 16. Write handoff.md, spawn successor, cancel timers, exit.
 - **Work items**:
-  1. API and Database Analysis [pending]
-  2. Plan & PROJECT.md initialization [pending]
-  3. E2E Test Suite Development (Dual Track) [pending]
-  4. Frontend UI Implementation [pending]
-  5. Integration and Hardening [pending]
-- **Current phase**: 1
-- **Current focus**: API and Database Analysis
+  1. Academic Setup Frontend [completed]
+  2. Curriculum Management API Analysis [completed]
+  3. Curriculum Listing & CRUD UI [completed]
+  4. Curriculum Builder & Course Assignment UI [completed]
+  5. E2E Verification & Build [pending]
+- **Current phase**: 2
+- **Current focus**: E2E Verification & Build
 
 ## 🔒 Key Constraints
 - DISPATCH-ONLY: MUST delegate ALL work to subagents via invoke_subagent. MUST NOT write code nor solve problems directly.
@@ -47,6 +47,7 @@ Build the React frontend workflows for the Academic Setup module, including Depa
 
 ## Key Decisions Made
 - [initial decision] Initialized BRIEFING.md.
+- Decided to analyze backend Curriculum API using an Explorer agent.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
@@ -59,18 +60,22 @@ Build the React frontend workflows for the Academic Setup module, including Depa
 | Milestone 2 Worker | teamwork_preview_worker | Base Master Data CRUD | completed | 42a388cd-d663-4db8-81a4-b2a5d81c16db |
 | Milestone 3 Worker | teamwork_preview_worker | Department-Linked Data CRUD | completed | 41a54168-5985-4e79-90d8-5dc9b6eec088 |
 | Milestone 4 Worker | teamwork_preview_worker | Operational Data CRUD | completed | 0c52c469-3b8d-40b6-a0c9-7f5635cc95f4 |
-| E2E Execution Worker | teamwork_preview_worker | Run E2E Test Suite | in-progress | eebc33b4-513c-4905-8089-73692eeff610 |
+| E2E Execution Worker | teamwork_preview_worker | Run E2E Test Suite | completed | eebc33b4-513c-4905-8089-73692eeff610 |
+| Curriculum Explorer | teamwork_preview_explorer | Curriculum API Analysis | completed | 3bf7f5dc-1307-468c-a2fe-f00639b07367 |
+| Curriculum CRUD Worker | teamwork_preview_worker | Curriculum CRUD Implementation | completed | a8b36c2d-0a0a-4557-912c-7d8c59d14583 |
+| Curriculum Builder Worker | teamwork_preview_worker | Curriculum Builder Implementation | completed | 3d5fa76b-ec35-40a5-a8a8-8dd127b1291e |
+| Curriculum E2E Worker | teamwork_preview_worker | Curriculum E2E Verification | in-progress | 3463c6c4-b980-42ec-a44e-e3f66715bb08 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 9 / 16
-- Pending subagents: eebc33b4-513c-4905-8089-73692eeff610
+- Spawn count: 13 / 16
+- Pending subagents: 3463c6c4-b980-42ec-a44e-e3f66715bb08
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: task-15
-- Safety timer: task-222
+- Heartbeat cron: task-55
+- Safety timer: none
 - On succession: kill all timers before spawning successor
 - On context truncation: run `manage_task(Action="list")` — re-create if missing
 

@@ -12,7 +12,7 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 
 ## Code Layout
 - TypeScript types: `frontend/src/lib/types.ts`
-- Query/Mutation hooks: `frontend/src/hooks/use-setup.ts`
+- Query/Mutation hooks: `frontend/src/hooks/use-setup.ts` and `frontend/src/hooks/use-curriculum.ts`
 - App routes/sidebar: `frontend/src/App.tsx`
 - Parent Layout component: `frontend/src/pages/setup/setup-layout.tsx`
 - Setup sub-module tab pages:
@@ -24,15 +24,20 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
   - School Years: `frontend/src/pages/setup/school-years-tab.tsx`
   - Semesters: `frontend/src/pages/setup/semesters-tab.tsx`
   - Sections: `frontend/src/pages/setup/sections-tab.tsx`
+  - Curricula: `frontend/src/pages/setup/curricula-tab.tsx`
+  - Curriculum Builder: `frontend/src/pages/setup/curriculum-builder.tsx`
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|---|---|
-| 1 | Shared Layout & Navigation | Setup `/setup` layout, sidebar link, routing, and blank tabs | None | PLANNED |
-| 2 | Base Master Data CRUD | School Years, Semesters, Rooms, Departments CRUD | M1 | PLANNED |
-| 3 | Department-Linked Data CRUD | Programs, Courses, Faculty CRUD | M2 | PLANNED |
-| 4 | Operational Data CRUD | Sections CRUD & Final Integration | M3 | PLANNED |
-| 5 | E2E Verification & Hardening | E2E Test Suite verification (Tiers 1-4) & adversarial hardening (Tier 5) | M4, E2E Testing Track | PLANNED |
+| 1 | Shared Layout & Navigation | Setup `/setup` layout, sidebar link, routing, and blank tabs | None | DONE |
+| 2 | Base Master Data CRUD | School Years, Semesters, Rooms, Departments CRUD | M1 | DONE |
+| 3 | Department-Linked Data CRUD | Programs, Courses, Faculty CRUD | M2 | DONE |
+| 4 | Operational Data CRUD | Sections CRUD & Final Integration | M3 | DONE |
+| 5 | E2E Verification & Hardening | E2E Test Suite verification (Tiers 1-4) & adversarial hardening (Tier 5) | M4, E2E Testing Track | DONE |
+| 6 | Curriculum Listing & CRUD UI | Create curricula tab, list from API, create/update/delete curricula forms | M3 | PLANNED |
+| 7 | Curriculum Builder & course assignment | Term-grouped view, assign course modal with pre-req/co-req multi-select | M6 | PLANNED |
+| 8 | E2E Verification & Build | Ensure clean build and TypeScript compilation, verify E2E suite | M7 | PLANNED |
 
 ## Interface Contracts
 
@@ -42,6 +47,8 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 - **`CourseType`**: `"MAJOR" | "PROFESSIONAL_COURSE" | "GENERAL_EDUCATION" | "PHYSICAL_EDUCATION" | "NSTP" | "ELECTIVE" | "LABORATORY" | "SEMINAR" | "THESIS_CAPSTONE"`
 - **`EmploymentStatus`**: `"FULL_TIME" | "PART_TIME" | "CONTRACTUAL" | "VISITING_LECTURER" | "INACTIVE"`
 - **`FacultyType`**: `"INSTRUCTOR" | "PROFESSOR" | "LECTURER" | "DEAN" | "PROGRAM_HEAD"`
+- **`CurriculumStatus`**: `"DRAFT" | "ACTIVE" | "INACTIVE" | "ARCHIVED"`
+- **`RequiredStatus`**: `"REQUIRED" | "OPTIONAL" | "ELECTIVE"`
 
 ### 2. API Endpoint Matrix
 
@@ -83,6 +90,15 @@ The backend runs as a Spring Boot application. All frontend requests starting wi
 | | `POST` | `/api/v1/sections` | `SectionRequest` | `ApiResponse<Section>` | `ACADEMIC_SETUP_MANAGE` |
 | | `PUT` | `/api/v1/sections/{id}` | `SectionRequest` | `ApiResponse<Section>` | `ACADEMIC_SETUP_MANAGE` |
 | | `PATCH` | `/api/v1/sections/{id}/status` | `{"status": ActiveStatus}` | `ApiResponse<Section>` | `ACADEMIC_SETUP_MANAGE` |
+| **Curricula** | `GET` | `/api/v1/curricula` | Parameters: `search` (Optional String), `page`, `size` | `ApiResponse<PageResponse<CurriculumResponse>>` | `CURRICULUM_VIEW` |
+| | `POST` | `/api/v1/curricula` | `CurriculumRequest` | `ApiResponse<CurriculumResponse>` | `CURRICULUM_MANAGE` |
+| | `GET` | `/api/v1/curricula/{id}` | N/A | `ApiResponse<CurriculumDetailResponse>` | `CURRICULUM_VIEW` |
+| | `PUT` | `/api/v1/curricula/{id}` | `CurriculumRequest` | `ApiResponse<CurriculumResponse>` | `CURRICULUM_MANAGE` |
+| | `POST` | `/api/v1/curricula/{id}/activate` | N/A | `ApiResponse<CurriculumResponse>` | `CURRICULUM_MANAGE` |
+| | `GET` | `/api/v1/curricula/{id}/checklist` | N/A | `ApiResponse<CurriculumChecklistResponse>` | `CURRICULUM_VIEW` |
+| | `POST` | `/api/v1/curricula/{id}/courses` | `CurriculumCourseRequest` | `ApiResponse<CurriculumCourseResponse>` | `CURRICULUM_MANAGE` |
+| | `PUT` | `/api/v1/curricula/{id}/courses/{ccId}` | `CurriculumCourseRequest` | `ApiResponse<CurriculumCourseResponse>` | `CURRICULUM_MANAGE` |
+| | `DELETE` | `/api/v1/curricula/{id}/courses/{ccId}` | N/A | `ApiResponse<Void>` | `CURRICULUM_MANAGE` |
 
 ### 3. Verification Constraints (Zod Validations)
 All frontend forms must validate inputs to match the backend JSR-380 annotations:
