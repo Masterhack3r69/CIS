@@ -225,6 +225,7 @@ public class EnrollmentService {
         EnrollmentStatus previous = enrollment.getStatus();
         enrollment.setStatus(EnrollmentStatus.CONFIRMED);
         enrollment.getStudent().setYearLevel(enrollment.getYearLevel());
+        enrollment.getStudent().setStatus(com.school.sis.student.entity.StudentStatus.ENROLLED);
         recordStatusHistory(enrollment, previous, EnrollmentStatus.CONFIRMED, "Enrollment confirmed");
         auditService.log("ENROLLMENT_CONFIRMED", "ENROLLMENT", "Enrollment", enrollment.getId(),
                 Map.of("status", previous.name()),
@@ -584,7 +585,9 @@ public class EnrollmentService {
     }
 
     private String facultyName(Faculty faculty) {
-        return String.join(" ", List.of(faculty.getFirstName(), blankToEmpty(faculty.getMiddleName()), faculty.getLastName(), blankToEmpty(faculty.getSuffix())))
+        if (faculty == null) return null;
+        String middleInitial = faculty.getMiddleName() != null && !faculty.getMiddleName().isBlank() ? faculty.getMiddleName().substring(0, 1).toUpperCase() + "." : "";
+        return String.join(" ", List.of(faculty.getFirstName(), middleInitial, faculty.getLastName(), blankToEmpty(faculty.getSuffix())))
                 .replaceAll("\\s+", " ")
                 .trim();
     }

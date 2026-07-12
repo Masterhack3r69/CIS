@@ -471,7 +471,9 @@ public class GradeService {
     }
 
     private String facultyName(Faculty faculty) {
-        return String.join(" ", List.of(faculty.getFirstName(), blankToEmpty(faculty.getMiddleName()), faculty.getLastName(), blankToEmpty(faculty.getSuffix())))
+        if (faculty == null) return null;
+        String middleInitial = faculty.getMiddleName() != null && !faculty.getMiddleName().isBlank() ? faculty.getMiddleName().substring(0, 1).toUpperCase() + "." : "";
+        return String.join(" ", List.of(faculty.getFirstName(), middleInitial, faculty.getLastName(), blankToEmpty(faculty.getSuffix())))
                 .replaceAll("\\s+", " ")
                 .trim();
     }
