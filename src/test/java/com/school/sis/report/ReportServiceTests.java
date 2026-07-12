@@ -264,7 +264,7 @@ class ReportServiceTests {
         student.setYearLevel(1);
         student.setDateAdmitted(LocalDate.of(2026, 6, 1));
         student.setSchoolYearAdmitted("2026-2027");
-        student.setClassification(StudentClassification.REGULAR);
+        student.setClassification(StudentClassification.IRREGULAR);
         student.setAcademicStatus(AcademicStatus.REGULAR);
         student = studentRepository.save(student);
 

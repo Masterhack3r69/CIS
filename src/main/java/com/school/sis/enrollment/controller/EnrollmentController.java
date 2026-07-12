@@ -2,6 +2,7 @@ package com.school.sis.enrollment.controller;
 
 import com.school.sis.common.response.ApiResponse;
 import com.school.sis.common.response.PageResponse;
+import com.school.sis.enrollment.dto.EnrollmentCancelRequest;
 import com.school.sis.enrollment.dto.EnrollmentRequest;
 import com.school.sis.enrollment.dto.EnrollmentResponse;
 import com.school.sis.enrollment.dto.EnrollmentSearchCriteria;
@@ -96,7 +97,7 @@ public class EnrollmentController {
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('ENROLLMENT_APPROVE')")
-    public ApiResponse<EnrollmentResponse> cancel(@PathVariable UUID id) {
-        return ApiResponse.success("Enrollment cancelled", enrollmentService.cancel(id));
+    public ApiResponse<EnrollmentResponse> cancel(@PathVariable UUID id, @Valid @RequestBody EnrollmentCancelRequest request) {
+        return ApiResponse.success("Enrollment cancelled", enrollmentService.cancel(id, request.reason()));
     }
 }

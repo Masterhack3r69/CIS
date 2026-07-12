@@ -135,3 +135,56 @@ Verification will be primarily manual via the UI, supplemented by programmatic c
 - [ ] The Create Section modal correctly allows selecting a Curriculum based on the selected Program.
 - [ ] The Student Profile correctly displays the new "Current Enrollment" panel instead of a permanent section.
 
+## Follow-up — 2026-07-12T03:36:27Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+
+Complete the Enrollment workspace around the new curriculum-specific sections and schedules, including automatic load population for regular students and manual selection for irregular students.
+
+Working directory: c:\Users\PC\Projects\cis
+Integrity mode: development
+
+## Requirements
+
+### R1. Regular Student Enrollment Flow
+The system must automatically populate a regular student's draft enrollment with every active, curriculum-eligible schedule from their selected section. Confirmation must be prevented if the section's required schedule load is missing, full, inactive, or unavailable. Regular students must not be allowed to mix sections. 
+
+### R2. Irregular and Cross-Enrolled Student Flow
+The system must allow irregular and cross-enrolled students to manually select schedules across eligible sections. They must be allowed to have a "Mixed sections" designation, but cannot use a null section. Their schedule choices must be restricted by program, curriculum, enrollment year level, and term.
+
+### R3. Enrollment Records Management
+The `/enrollment` route must provide "Enrollment Records" and "Enroll Student" tabs. The records view must support searching/filtering, detailed record inspection, resuming drafts, and cancellation of confirmed records. Cancellation must require a reason, preserve history, and prevent further editing. 
+
+### R4. Schedule Integration & UI Updates
+Schedule searches must support curriculum and year-level filtering. The UI must clearly distinguish between selected, available, full, and unavailable schedules. A functional schedule filter (section, course, day, availability) and an enrollment summary must be present. All validation issues must be clearly displayed and block confirmation.
+
+### R5. Backend Enforcement
+The backend must enforce all validation rules (prerequisites, capacity, curriculum mismatch, time conflicts). It must handle regular draft creation and automatic schedule population as a single transaction. It must also handle the updated cancellation logic. No new parallel models should be created.
+
+## Verification Resources
+- Existing backend enrollment and schedule test suites.
+- Existing frontend typecheck and build commands.
+- Existing PostgreSQL migration tests.
+
+## Acceptance Criteria
+
+### Regular Enrollment
+- [ ] Programmatic: Backend tests pass demonstrating regular enrollments automatically receive all active schedules for the section.
+- [ ] Programmatic: Backend tests pass demonstrating confirmation is blocked for missing, full, conflicting, inactive, or invalid schedules.
+- [ ] Agent-as-judge: UI correctly displays blocking validation issues for regular students when required schedules are unavailable.
+
+### Irregular Enrollment
+- [ ] Programmatic: Backend tests pass demonstrating irregular students can select eligible schedules from multiple sections.
+- [ ] Programmatic: Backend tests pass demonstrating non-regular classifications cannot use a null section.
+
+### Records and State
+- [ ] Programmatic: Backend tests pass demonstrating that cancellation requires a reason, preserves history, and prevents editing.
+- [ ] Agent-as-judge: The Enrollment Records tab correctly filters records and displays detailed views, including resumed drafts and PDFs.
+
+### Backend Validation
+- [ ] Programmatic: Backend tests pass demonstrating schedule queries correctly filter by term, program, curriculum, year level, section, and active status.
+- [ ] Programmatic: Backend tests pass demonstrating prerequisite, capacity, curriculum, term, and meeting-conflict validations are strictly enforced.
+

@@ -48,9 +48,11 @@ public class ScheduleController {
             @RequestParam(required = false) UUID courseId,
             @RequestParam(required = false) DayOfWeek dayOfWeek,
             @RequestParam(required = false) ScheduleStatus status,
+            @RequestParam(required = false) UUID curriculumId,
+            @RequestParam(required = false) Integer yearLevel,
             Pageable pageable
     ) {
-        ScheduleSearchCriteria criteria = new ScheduleSearchCriteria(search, schoolYearId, semesterId, programId, sectionId, facultyId, roomId, courseId, dayOfWeek, status);
+        ScheduleSearchCriteria criteria = new ScheduleSearchCriteria(search, schoolYearId, semesterId, programId, sectionId, facultyId, roomId, courseId, dayOfWeek, status, curriculumId, yearLevel);
         return ApiResponse.success("Schedules retrieved", scheduleService.list(criteria, pageable));
     }
 

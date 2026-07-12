@@ -367,6 +367,8 @@ public class ScheduleService {
             if (criteria.roomId() != null) predicate = cb.and(predicate, cb.equal(root.get("room").get("id"), criteria.roomId()));
             if (criteria.courseId() != null) predicate = cb.and(predicate, cb.equal(root.get("course").get("id"), criteria.courseId()));
             if (criteria.status() != null) predicate = cb.and(predicate, cb.equal(root.get("status"), criteria.status()));
+            if (criteria.curriculumId() != null) predicate = cb.and(predicate, cb.equal(root.get("section").get("curriculum").get("id"), criteria.curriculumId()));
+            if (criteria.yearLevel() != null) predicate = cb.and(predicate, cb.equal(root.get("section").get("yearLevel"), criteria.yearLevel()));
             if (criteria.dayOfWeek() != null) {
                 var meeting = root.join("meetings", JoinType.INNER);
                 predicate = cb.and(predicate, cb.equal(meeting.get("dayOfWeek"), criteria.dayOfWeek()));

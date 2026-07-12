@@ -15,6 +15,8 @@ public record ScheduleSearchCriteria(
         UUID roomId,
         UUID courseId,
         DayOfWeek dayOfWeek,
-        ScheduleStatus status
+        ScheduleStatus status,
+        UUID curriculumId,
+        Integer yearLevel
 ) {
 }

@@ -293,7 +293,7 @@ class FeeAssessmentServiceTests {
         createFee("MISC-CANCEL", FeeCategory.MISCELLANEOUS, FeeComputationType.FIXED_AMOUNT, "100");
         EnrollmentResponse enrollment = enrollmentWithTwoSubjects();
         enrollmentService.confirm(enrollment.id());
-        EnrollmentResponse cancelled = enrollmentService.cancel(enrollment.id());
+        EnrollmentResponse cancelled = enrollmentService.cancel(enrollment.id(), "Reason");
 
         assertThat(cancelled.status()).isEqualTo(EnrollmentStatus.CANCELLED);
         assertThatThrownBy(() -> assessmentService.generate(enrollment.id()))

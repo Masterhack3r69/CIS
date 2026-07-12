@@ -371,6 +371,8 @@ class EnrollmentServiceTests {
 
     @Test
     void confirmValidEnrollmentRecordsStatusHistoryAndLocksEnrollment() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
         ScheduleResponse schedule = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.THURSDAY, "09:00", "10:00");
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
@@ -388,7 +390,7 @@ class EnrollmentServiceTests {
     void cancelRecordsStatusHistory() {
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
 
-        EnrollmentResponse cancelled = enrollmentService.cancel(enrollment.id());
+        EnrollmentResponse cancelled = enrollmentService.cancel(enrollment.id(), "Reason");
 
         assertThat(cancelled.status()).isEqualTo(EnrollmentStatus.CANCELLED);
         assertThat(statusHistoryRepository.findByEnrollmentIdOrderByChangedAtAsc(enrollment.id())).hasSize(2);
@@ -396,6 +398,8 @@ class EnrollmentServiceTests {
 
     @Test
     void validateDoesNotWarnWhenNoPrerequisitesExist() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
         ScheduleResponse schedule = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.FRIDAY, "09:00", "10:00");
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
@@ -486,5 +490,46 @@ class EnrollmentServiceTests {
         curriculumCourse.setSortOrder(sortOrder);
         curriculumCourse.setRequiredStatus(RequiredStatus.REQUIRED);
         curriculumCourseRepository.save(curriculumCourse);
+    }
+
+    @Test
+    void testMixedSectionDesignationForFlexibleStudent() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        EnrollmentResponse response = enrollmentService.create(new EnrollmentRequest(
+                student.getId(), schoolYear.getId(), semester.getId(), 1, null, "Mixed section test"));
+
+        assertThat(response.sectionCode()).startsWith("MIXED-");
+        assertThat(response.sectionCode()).contains(student.getProgram().getProgramCode());
+
+        student.setClassification(StudentClassification.REGULAR);
+        studentRepository.save(student);
+        assertThatThrownBy(() -> enrollmentService.create(new EnrollmentRequest(
+                student.getId(), schoolYear.getId(), semester.getId(), 1, null, "Regular student fails")))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Section is required for this student classification");
+    }
+
+    @Test
+    void testDraftAutoPopulationForRegularStudent() {
+        ScheduleResponse sch1 = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "08:00", "09:00");
+        ScheduleResponse sch2 = schedule(courseTwo, sectionA, facultyTwo, roomTwo, DayOfWeek.MONDAY, "09:00", "10:00");
+
+        EnrollmentResponse response = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+
+        assertThat(response.subjectCount()).isEqualTo(2);
+        assertThat(response.subjects()).extracting("courseCode")
+                .containsExactlyInAnyOrder(courseOne.getCourseCode(), courseTwo.getCourseCode());
+    }
+
+    @Test
+    void testCompletenessValidationForRegularStudent() {
+        ScheduleResponse sch1 = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "08:00", "09:00");
+
+        EnrollmentResponse response = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+
+        assertThat(response.validation().valid()).isFalse();
+        assertThat(response.validation().blockingIssues()).extracting("code")
+                .contains("REQUIRED_COURSE_MISSING");
     }
 }
