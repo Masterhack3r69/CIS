@@ -9,7 +9,6 @@ public record StudentSearchCriteria(
         String search,
         UUID programId,
         Integer yearLevel,
-        UUID sectionId,
         StudentStatus status,
         String schoolYearAdmitted,
         DocumentVerificationStatus documentStatus

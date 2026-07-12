@@ -116,7 +116,7 @@ public class EnrollmentService {
         Semester semester = semesterRepository.findById(request.semesterId())
                 .orElseThrow(() -> new NotFoundException("Semester not found"));
         Section section = resolveSection(request.sectionId());
-        validateSection(student, schoolYear, semester, section);
+        validateSection(student, schoolYear, semester, request.yearLevel(), section);
         validateNoDuplicateEnrollment(student.getId(), schoolYear.getId(), semester.getId());
 
         Enrollment enrollment = new Enrollment();
@@ -124,6 +124,7 @@ public class EnrollmentService {
         enrollment.setProgram(student.getProgram());
         enrollment.setSchoolYear(schoolYear);
         enrollment.setSemester(semester);
+        enrollment.setYearLevel(request.yearLevel());
         enrollment.setSection(section);
         enrollment.setRemarks(request.remarks());
         enrollment.setStatus(EnrollmentStatus.DRAFT);
@@ -139,8 +140,10 @@ public class EnrollmentService {
         Enrollment enrollment = findEnrollment(id);
         ensureDraft(enrollment);
         Section section = resolveSection(request.sectionId());
-        validateSection(enrollment.getStudent(), enrollment.getSchoolYear(), enrollment.getSemester(), section);
+        int yearLevel = request.yearLevel() == null ? enrollment.getYearLevel() : request.yearLevel();
+        validateSection(enrollment.getStudent(), enrollment.getSchoolYear(), enrollment.getSemester(), yearLevel, section);
         enrollment.setSection(section);
+        enrollment.setYearLevel(yearLevel);
         enrollment.setRemarks(request.remarks());
         auditService.log("ENROLLMENT_UPDATED", "ENROLLMENT", "Enrollment", enrollment.getId(), null,
                 Map.of("studentId", enrollment.getStudent().getId(), "status", enrollment.getStatus().name()));
@@ -199,6 +202,7 @@ public class EnrollmentService {
         }
         EnrollmentStatus previous = enrollment.getStatus();
         enrollment.setStatus(EnrollmentStatus.CONFIRMED);
+        enrollment.getStudent().setYearLevel(enrollment.getYearLevel());
         recordStatusHistory(enrollment, previous, EnrollmentStatus.CONFIRMED, "Enrollment confirmed");
         auditService.log("ENROLLMENT_CONFIRMED", "ENROLLMENT", "Enrollment", enrollment.getId(),
                 Map.of("status", previous.name()),
@@ -238,6 +242,9 @@ public class EnrollmentService {
         if (!courseExistsInStudentCurriculum(enrollment, schedule)) {
             throw new BusinessRuleException("Schedule course is not part of the student's curriculum");
         }
+        long enrolledCount = enrollmentSubjectRepository.countByClassScheduleIdAndStatusAndEnrollmentStatus(
+                schedule.getId(), EnrollmentSubjectStatus.ENROLLED, EnrollmentStatus.CONFIRMED);
+        if (enrolledCount >= schedule.getCapacity()) throw new BusinessRuleException("Schedule has no available seats");
     }
 
     private EnrollmentValidationResponse validateEnrollment(Enrollment enrollment) {
@@ -262,6 +269,11 @@ public class EnrollmentService {
             }
             if (!courseExistsInStudentCurriculum(enrollment, schedule)) {
                 blocking.add(issue("NON_CURRICULUM_COURSE", "Selected schedule course is not part of the student's curriculum", subject.getId(), schedule.getId()));
+            }
+            long enrolledCount = enrollmentSubjectRepository.countByClassScheduleIdAndStatusAndEnrollmentStatus(
+                    schedule.getId(), EnrollmentSubjectStatus.ENROLLED, EnrollmentStatus.CONFIRMED);
+            if (enrolledCount >= schedule.getCapacity()) {
+                blocking.add(issue("NO_AVAILABLE_SEATS", "Selected schedule has no available seats", subject.getId(), schedule.getId()));
             }
             CurriculumCourse curriculumCourse = curriculumCourseForSchedule(enrollment, schedule);
             if (curriculumCourse != null) {
@@ -316,13 +328,23 @@ public class EnrollmentService {
         return curriculumCourseRepository.findByCurriculumIdOrderByYearLevelAscSemesterAscSortOrderAsc(enrollment.getStudent().getCurriculum().getId())
                 .stream()
                 .filter(curriculumCourse -> curriculumCourse.getCourse().getId().equals(schedule.getCourse().getId()))
+                .filter(curriculumCourse -> curriculumCourse.getYearLevel() == enrollment.getYearLevel())
+                .filter(curriculumCourse -> normalizeSemester(curriculumCourse.getSemester()).equals(normalizeSemester(enrollment.getSemester().getName())))
                 .findFirst()
                 .orElse(null);
     }
 
-    private void validateSection(Student student, SchoolYear schoolYear, Semester semester, Section section) {
-        if (section == null) {
-            return;
+    private String normalizeSemester(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "_");
+    }
+
+    private void validateSection(Student student, SchoolYear schoolYear, Semester semester, int yearLevel, Section section) {
+        boolean flexible = student.getClassification() == com.school.sis.student.entity.StudentClassification.IRREGULAR
+                || student.getClassification() == com.school.sis.student.entity.StudentClassification.CROSS_ENROLLEE;
+        if (section == null && flexible) return;
+        if (section == null) throw new BusinessRuleException("Section is required for this student classification");
+        if (section.getStatus() != com.school.sis.setup.entity.ActiveStatus.ACTIVE) {
+            throw new BusinessRuleException("Selected section is inactive");
         }
         if (!section.getProgram().getId().equals(student.getProgram().getId())) {
             throw new BusinessRuleException("Section program must match student program");
@@ -330,6 +352,10 @@ public class EnrollmentService {
         if (!section.getSchoolYear().getId().equals(schoolYear.getId()) || !section.getSemester().getId().equals(semester.getId())) {
             throw new BusinessRuleException("Section term must match enrollment term");
         }
+        if (section.getCurriculum() == null || !section.getCurriculum().getId().equals(student.getCurriculum().getId())) {
+            throw new BusinessRuleException("Section curriculum must match student curriculum");
+        }
+        if (section.getYearLevel() != yearLevel) throw new BusinessRuleException("Section year level must match enrollment year level");
     }
 
     private void validateNoDuplicateEnrollment(UUID studentId, UUID schoolYearId, UUID semesterId) {
@@ -379,6 +405,7 @@ public class EnrollmentService {
                 studentName(enrollment.getStudent()),
                 enrollment.getProgram().getId(),
                 enrollment.getProgram().getProgramCode(),
+                enrollment.getYearLevel(),
                 enrollment.getSection() == null ? null : enrollment.getSection().getId(),
                 enrollment.getSection() == null ? null : enrollment.getSection().getSectionCode(),
                 enrollment.getSchoolYear().getId(),
@@ -403,6 +430,7 @@ public class EnrollmentService {
                 studentName(enrollment.getStudent()),
                 enrollment.getProgram().getId(),
                 enrollment.getProgram().getProgramCode(),
+                enrollment.getYearLevel(),
                 enrollment.getSection() == null ? null : enrollment.getSection().getId(),
                 enrollment.getSection() == null ? null : enrollment.getSection().getSectionCode(),
                 enrollment.getSchoolYear().getId(),

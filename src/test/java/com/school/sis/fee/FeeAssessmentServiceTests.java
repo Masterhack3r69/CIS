@@ -179,19 +179,10 @@ class FeeAssessmentServiceTests {
         schoolYear = schoolYearRepository.save(schoolYear);
 
         semester = new Semester();
-        semester.setName("FEE-TERM-" + suffix);
+        semester.setName("FEETERM" + suffix);
         semester.setSortOrder(1);
         semester.setActive(true);
         semester = semesterRepository.save(semester);
-
-        section = new Section();
-        section.setSectionCode("FEE-1A-" + suffix);
-        section.setProgram(program);
-        section.setSchoolYear(schoolYear);
-        section.setSemester(semester);
-        section.setYearLevel(1);
-        section.setStatus(ActiveStatus.ACTIVE);
-        section = sectionRepository.save(section);
 
         Curriculum curriculum = new Curriculum();
         curriculum.setProgram(program);
@@ -204,6 +195,16 @@ class FeeAssessmentServiceTests {
         curriculumCourse(curriculum, labCourse, 1);
         curriculumCourse(curriculum, lectureCourse, 2);
 
+        section = new Section();
+        section.setSectionCode("FEE-1A-" + suffix);
+        section.setProgram(program);
+        section.setCurriculum(curriculum);
+        section.setSchoolYear(schoolYear);
+        section.setSemester(semester);
+        section.setYearLevel(1);
+        section.setStatus(ActiveStatus.ACTIVE);
+        section = sectionRepository.save(section);
+
         student = new Student();
         student.setStudentNumber("FEE-S-" + suffix);
         student.setFirstName("Fee");
@@ -214,8 +215,6 @@ class FeeAssessmentServiceTests {
         student.setProgram(program);
         student.setCurriculum(curriculum);
         student.setYearLevel(1);
-        student.setSemester(semester.getName());
-        student.setSection(section);
         student.setDateAdmitted(LocalDate.of(2026, 6, 1));
         student.setSchoolYearAdmitted("2026-2027");
         student.setClassification(StudentClassification.REGULAR);
@@ -303,7 +302,7 @@ class FeeAssessmentServiceTests {
     }
 
     private EnrollmentResponse enrollmentWithTwoSubjects() {
-        EnrollmentResponse enrollment = enrollmentService.create(new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), section.getId(), null));
+        EnrollmentResponse enrollment = enrollmentService.create(new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), student.getYearLevel(), section.getId(), null));
         ScheduleResponse first = schedule(labCourse, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
         ScheduleResponse second = schedule(lectureCourse, roomTwo, DayOfWeek.TUESDAY, "09:00", "10:00");
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(first.id()));
@@ -331,8 +330,6 @@ class FeeAssessmentServiceTests {
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
-                schoolYear.getId(),
-                semester.getId(),
                 40,
                 ScheduleStatus.ACTIVE,
                 List.of(new ScheduleMeetingRequest(day, LocalTime.parse(start), LocalTime.parse(end)))

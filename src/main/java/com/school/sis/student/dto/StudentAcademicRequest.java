@@ -13,8 +13,6 @@ public record StudentAcademicRequest(
         @NotNull UUID programId,
         @NotNull UUID curriculumId,
         @Min(1) int yearLevel,
-        String semester,
-        UUID sectionId,
         @NotNull LocalDate dateAdmitted,
         @NotBlank String schoolYearAdmitted,
         StudentClassification classification,

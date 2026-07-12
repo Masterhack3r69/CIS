@@ -3,7 +3,6 @@ package com.school.sis.student.entity;
 import com.school.sis.common.audit.AuditableEntity;
 import com.school.sis.curriculum.entity.Curriculum;
 import com.school.sis.setup.entity.Program;
-import com.school.sis.setup.entity.Section;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -71,12 +70,6 @@ public class Student extends AuditableEntity {
     @Column(name = "year_level", nullable = false)
     private int yearLevel;
 
-    private String semester;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "section_id")
-    private Section section;
-
     @Column(name = "date_admitted", nullable = false)
     private LocalDate dateAdmitted;
 
@@ -137,10 +130,6 @@ public class Student extends AuditableEntity {
     public void setCurriculum(Curriculum curriculum) { this.curriculum = curriculum; }
     public int getYearLevel() { return yearLevel; }
     public void setYearLevel(int yearLevel) { this.yearLevel = yearLevel; }
-    public String getSemester() { return semester; }
-    public void setSemester(String semester) { this.semester = semester; }
-    public Section getSection() { return section; }
-    public void setSection(Section section) { this.section = section; }
     public LocalDate getDateAdmitted() { return dateAdmitted; }
     public void setDateAdmitted(LocalDate dateAdmitted) { this.dateAdmitted = dateAdmitted; }
     public String getSchoolYearAdmitted() { return schoolYearAdmitted; }

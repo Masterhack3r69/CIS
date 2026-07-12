@@ -101,6 +101,7 @@ class EnrollmentServiceTests {
     private Section sectionA;
     private Section sectionB;
     private Student student;
+    private Curriculum curriculum;
 
     @Autowired
     EnrollmentServiceTests(
@@ -171,13 +172,10 @@ class EnrollmentServiceTests {
         schoolYear.setActive(true);
         schoolYear = schoolYearRepository.save(schoolYear);
 
-        semester = semester("TERM-" + suffix, 1);
-        otherSemester = semester("OTHER-" + suffix, 2);
+        semester = semester("TERM" + suffix, 1);
+        otherSemester = semester("OTHER" + suffix, 2);
 
-        sectionA = section("BSIT-1A-" + suffix, semester);
-        sectionB = section("BSIT-1B-" + suffix, semester);
-
-        Curriculum curriculum = new Curriculum();
+        curriculum = new Curriculum();
         curriculum.setProgram(program);
         curriculum.setCurriculumCode("CUR-" + suffix);
         curriculum.setCurriculumName("BSIT Curriculum");
@@ -189,6 +187,9 @@ class EnrollmentServiceTests {
         curriculumCourse(curriculum, courseTwo, 2);
         curriculumCourse(curriculum, courseThree, 3);
 
+        sectionA = section("BSIT-1A-" + suffix, semester);
+        sectionB = section("BSIT-1B-" + suffix, semester);
+
         student = new Student();
         student.setStudentNumber("S-" + suffix);
         student.setFirstName("Test");
@@ -199,7 +200,6 @@ class EnrollmentServiceTests {
         student.setProgram(program);
         student.setCurriculum(curriculum);
         student.setYearLevel(1);
-        student.setSemester(semester.getName());
         student.setDateAdmitted(LocalDate.of(2026, 6, 1));
         student.setSchoolYearAdmitted("2026-2027");
         student.setClassification(StudentClassification.REGULAR);
@@ -216,6 +216,18 @@ class EnrollmentServiceTests {
         assertThat(response.sectionId()).isEqualTo(sectionA.getId());
         assertThat(response.subjectCount()).isZero();
         assertThat(response.validation().valid()).isFalse();
+    }
+
+    @Test
+    void rejectsInactiveSection() {
+        Section inactiveSection = section("BSIT-INACTIVE-" + UUID.randomUUID().toString().substring(0, 8), semester);
+        inactiveSection.setStatus(ActiveStatus.INACTIVE);
+        inactiveSection = sectionRepository.save(inactiveSection);
+
+        final UUID inactiveSectionId = inactiveSection.getId();
+        assertThatThrownBy(() -> enrollmentService.create(enrollmentRequest(inactiveSectionId)))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Selected section is inactive");
     }
 
     @Test
@@ -252,8 +264,39 @@ class EnrollmentServiceTests {
 
     @Test
     void rejectsNonCurriculumSchedule() {
-        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
-        ScheduleResponse schedule = schedule(outsideCourse, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
+
+        Curriculum outsideCurriculum = new Curriculum();
+        outsideCurriculum.setProgram(program);
+        outsideCurriculum.setCurriculumCode("OUT-CUR-" + UUID.randomUUID().toString().substring(0, 8));
+        outsideCurriculum.setCurriculumName("Outside Curriculum");
+        outsideCurriculum.setEffectiveSchoolYear("2026-2027");
+        outsideCurriculum.setVersion("1");
+        outsideCurriculum.setStatus(CurriculumStatus.ACTIVE);
+        outsideCurriculum = curriculumRepository.save(outsideCurriculum);
+
+        CurriculumCourse cc = new CurriculumCourse();
+        cc.setCurriculum(outsideCurriculum);
+        cc.setYearLevel(1);
+        cc.setSemester(semester.getName());
+        cc.setCourse(outsideCourse);
+        cc.setSortOrder(1);
+        cc.setRequiredStatus(RequiredStatus.REQUIRED);
+        curriculumCourseRepository.save(cc);
+
+        Section outsideSection = new Section();
+        outsideSection.setSectionCode("OUT-SEC-" + UUID.randomUUID().toString().substring(0, 6));
+        outsideSection.setProgram(program);
+        outsideSection.setCurriculum(outsideCurriculum);
+        outsideSection.setSchoolYear(schoolYear);
+        outsideSection.setSemester(semester);
+        outsideSection.setYearLevel(1);
+        outsideSection.setStatus(ActiveStatus.ACTIVE);
+        outsideSection = sectionRepository.save(outsideSection);
+
+        ScheduleResponse schedule = schedule(outsideCourse, outsideSection, facultyOne, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
 
         assertThatThrownBy(() -> enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id())))
                 .isInstanceOf(BusinessRuleException.class)
@@ -262,7 +305,19 @@ class EnrollmentServiceTests {
 
     @Test
     void rejectsScheduleTermMismatch() {
-        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(sectionA.getId()));
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
+        EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
+
+        CurriculumCourse cc = new CurriculumCourse();
+        cc.setCurriculum(curriculum);
+        cc.setYearLevel(1);
+        cc.setSemester(otherSemester.getName());
+        cc.setCourse(courseOne);
+        cc.setSortOrder(4);
+        cc.setRequiredStatus(RequiredStatus.REQUIRED);
+        curriculumCourseRepository.save(cc);
+
         Section otherTermSection = section("BSIT-OT-" + UUID.randomUUID().toString().substring(0, 6), otherSemester);
         ScheduleResponse schedule = schedule(courseOne, otherTermSection, facultyOne, roomOne, DayOfWeek.MONDAY, "09:00", "10:00");
 
@@ -273,6 +328,8 @@ class EnrollmentServiceTests {
 
     @Test
     void rejectsConflictingSelectedSchedules() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
         ScheduleResponse first = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.MONDAY, "09:00", "10:30");
         ScheduleResponse second = schedule(courseTwo, sectionB, facultyTwo, roomTwo, DayOfWeek.MONDAY, "10:00", "11:00");
@@ -285,6 +342,8 @@ class EnrollmentServiceTests {
 
     @Test
     void allowsBackToBackSelectedSchedules() {
+        student.setClassification(StudentClassification.IRREGULAR);
+        studentRepository.save(student);
         EnrollmentResponse enrollment = enrollmentService.create(enrollmentRequest(null));
         ScheduleResponse first = schedule(courseOne, sectionA, facultyOne, roomOne, DayOfWeek.TUESDAY, "09:00", "10:00");
         ScheduleResponse second = schedule(courseTwo, sectionB, facultyTwo, roomTwo, DayOfWeek.TUESDAY, "10:00", "11:00");
@@ -348,7 +407,7 @@ class EnrollmentServiceTests {
     }
 
     private EnrollmentRequest enrollmentRequest(UUID sectionId) {
-        return new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), sectionId, "Test enrollment");
+        return new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), student.getYearLevel(), sectionId, "Test enrollment");
     }
 
     private ScheduleResponse schedule(Course course, Section section, Faculty faculty, Room room, DayOfWeek day, String start, String end) {
@@ -357,8 +416,6 @@ class EnrollmentServiceTests {
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
-                section.getSchoolYear().getId(),
-                section.getSemester().getId(),
                 40,
                 ScheduleStatus.ACTIVE,
                 List.of(new ScheduleMeetingRequest(day, LocalTime.parse(start), LocalTime.parse(end)))
@@ -412,6 +469,7 @@ class EnrollmentServiceTests {
         Section section = new Section();
         section.setSectionCode(code);
         section.setProgram(program);
+        section.setCurriculum(curriculum);
         section.setSchoolYear(schoolYear);
         section.setSemester(semester);
         section.setYearLevel(1);

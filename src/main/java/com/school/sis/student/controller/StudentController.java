@@ -49,13 +49,12 @@ public class StudentController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID programId,
             @RequestParam(required = false) Integer yearLevel,
-            @RequestParam(required = false) UUID sectionId,
             @RequestParam(required = false) StudentStatus status,
             @RequestParam(required = false) String schoolYearAdmitted,
             @RequestParam(required = false) DocumentVerificationStatus documentStatus,
             Pageable pageable
     ) {
-        StudentSearchCriteria criteria = new StudentSearchCriteria(search, programId, yearLevel, sectionId, status, schoolYearAdmitted, documentStatus);
+        StudentSearchCriteria criteria = new StudentSearchCriteria(search, programId, yearLevel, status, schoolYearAdmitted, documentStatus);
         return ApiResponse.success("Students retrieved", studentService.list(criteria, pageable));
     }
 

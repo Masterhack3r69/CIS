@@ -21,6 +21,7 @@ import com.school.sis.schedule.repository.ScheduleMeetingRepository;
 import com.school.sis.enrollment.repository.EnrollmentSubjectRepository;
 import com.school.sis.enrollment.entity.EnrollmentStatus;
 import com.school.sis.enrollment.entity.EnrollmentSubjectStatus;
+import com.school.sis.curriculum.repository.CurriculumCourseRepository;
 import com.school.sis.setup.entity.ActiveStatus;
 import com.school.sis.setup.entity.Course;
 import com.school.sis.setup.entity.Faculty;
@@ -31,9 +32,7 @@ import com.school.sis.setup.entity.Semester;
 import com.school.sis.setup.repository.CourseRepository;
 import com.school.sis.setup.repository.FacultyRepository;
 import com.school.sis.setup.repository.RoomRepository;
-import com.school.sis.setup.repository.SchoolYearRepository;
 import com.school.sis.setup.repository.SectionRepository;
-import com.school.sis.setup.repository.SemesterRepository;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -60,8 +59,7 @@ public class ScheduleService {
     private final CourseRepository courseRepository;
     private final FacultyRepository facultyRepository;
     private final RoomRepository roomRepository;
-    private final SchoolYearRepository schoolYearRepository;
-    private final SemesterRepository semesterRepository;
+    private final CurriculumCourseRepository curriculumCourseRepository;
     private final AuditService auditService;
     private final EnrollmentSubjectRepository enrollmentSubjectRepository;
 
@@ -72,8 +70,7 @@ public class ScheduleService {
             CourseRepository courseRepository,
             FacultyRepository facultyRepository,
             RoomRepository roomRepository,
-            SchoolYearRepository schoolYearRepository,
-            SemesterRepository semesterRepository,
+            CurriculumCourseRepository curriculumCourseRepository,
             AuditService auditService,
             EnrollmentSubjectRepository enrollmentSubjectRepository
     ) {
@@ -83,8 +80,7 @@ public class ScheduleService {
         this.courseRepository = courseRepository;
         this.facultyRepository = facultyRepository;
         this.roomRepository = roomRepository;
-        this.schoolYearRepository = schoolYearRepository;
-        this.semesterRepository = semesterRepository;
+        this.curriculumCourseRepository = curriculumCourseRepository;
         this.auditService = auditService;
         this.enrollmentSubjectRepository = enrollmentSubjectRepository;
     }
@@ -148,26 +144,26 @@ public class ScheduleService {
 
     private void apply(ClassSchedule schedule, ScheduleRequest request) {
         Section section = findSection(request.sectionId());
+        if (section.getCurriculum() == null) throw new BusinessRuleException("Section must have a curriculum");
         Course course = courseRepository.findById(request.courseId())
                 .orElseThrow(() -> new NotFoundException("Course not found"));
         Faculty faculty = facultyRepository.findById(request.facultyId())
                 .orElseThrow(() -> new NotFoundException("Faculty not found"));
         Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new NotFoundException("Room not found"));
-        SchoolYear schoolYear = schoolYearRepository.findById(request.schoolYearId())
-                .orElseThrow(() -> new NotFoundException("School year not found"));
-        Semester semester = semesterRepository.findById(request.semesterId())
-                .orElseThrow(() -> new NotFoundException("Semester not found"));
-
-        validateTermMatchesSection(section, schoolYear, semester);
+        String semesterCode = section.getSemester().getName().trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "_");
+        if (!curriculumCourseRepository.existsByCurriculumIdAndYearLevelAndSemesterIgnoreCaseAndCourseId(
+                section.getCurriculum().getId(), section.getYearLevel(), semesterCode, course.getId())) {
+            throw new BusinessRuleException("Course is not part of the section curriculum term");
+        }
         validateAssignable(faculty, room, section, request.status());
 
         schedule.setSection(section);
         schedule.setCourse(course);
         schedule.setFaculty(faculty);
         schedule.setRoom(room);
-        schedule.setSchoolYear(schoolYear);
-        schedule.setSemester(semester);
+        schedule.setSchoolYear(section.getSchoolYear());
+        schedule.setSemester(section.getSemester());
         schedule.setCapacity(request.capacity());
         schedule.setStatus(request.status());
         schedule.setMeetings(request.meetings().stream().map(this::toMeeting).toList());
@@ -177,13 +173,14 @@ public class ScheduleService {
         if (request.status() != ScheduleStatus.ACTIVE) {
             return;
         }
+        Section section = findSection(request.sectionId());
         List<ScheduleConflictDetail> conflicts = findConflicts(
                 currentScheduleId,
                 request.sectionId(),
                 request.facultyId(),
                 request.roomId(),
-                request.schoolYearId(),
-                request.semesterId(),
+                section.getSchoolYear().getId(),
+                section.getSemester().getId(),
                 request.meetings()
         );
         if (!conflicts.isEmpty()) {
@@ -290,6 +287,11 @@ public class ScheduleService {
                 schedule.getId(),
                 schedule.getSection().getId(),
                 schedule.getSection().getSectionCode(),
+                schedule.getSection().getProgram().getId(),
+                schedule.getSection().getProgram().getProgramCode(),
+                schedule.getSection().getCurriculum() == null ? null : schedule.getSection().getCurriculum().getId(),
+                schedule.getSection().getCurriculum() == null ? null : schedule.getSection().getCurriculum().getCurriculumCode(),
+                schedule.getSection().getYearLevel(),
                 schedule.getCourse().getId(),
                 schedule.getCourse().getCourseCode(),
                 schedule.getCourse().getCourseTitle(),

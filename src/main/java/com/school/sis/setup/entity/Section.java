@@ -1,6 +1,7 @@
 package com.school.sis.setup.entity;
 
 import com.school.sis.common.audit.AuditableEntity;
+import com.school.sis.curriculum.entity.Curriculum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,11 +12,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.util.UUID;
 
 @Entity
-@Table(name = "sections")
+@Table(name = "sections", uniqueConstraints = {
+    @UniqueConstraint(name = "sections_unique_term", columnNames = {"section_code", "school_year_id", "semester_id"})
+})
 public class Section extends AuditableEntity {
     @Id
     private UUID id;
@@ -26,6 +30,10 @@ public class Section extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "program_id", nullable = false)
     private Program program;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "curriculum_id")
+    private Curriculum curriculum;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "school_year_id", nullable = false)
@@ -52,6 +60,8 @@ public class Section extends AuditableEntity {
     public void setSectionCode(String sectionCode) { this.sectionCode = sectionCode; }
     public Program getProgram() { return program; }
     public void setProgram(Program program) { this.program = program; }
+    public Curriculum getCurriculum() { return curriculum; }
+    public void setCurriculum(Curriculum curriculum) { this.curriculum = curriculum; }
     public SchoolYear getSchoolYear() { return schoolYear; }
     public void setSchoolYear(SchoolYear schoolYear) { this.schoolYear = schoolYear; }
     public Semester getSemester() { return semester; }

@@ -29,6 +29,12 @@ import com.school.sis.setup.repository.RoomRepository;
 import com.school.sis.setup.repository.SchoolYearRepository;
 import com.school.sis.setup.repository.SectionRepository;
 import com.school.sis.setup.repository.SemesterRepository;
+import com.school.sis.curriculum.entity.Curriculum;
+import com.school.sis.curriculum.entity.CurriculumStatus;
+import com.school.sis.curriculum.entity.CurriculumCourse;
+import com.school.sis.curriculum.entity.RequiredStatus;
+import com.school.sis.curriculum.repository.CurriculumRepository;
+import com.school.sis.curriculum.repository.CurriculumCourseRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,9 +65,12 @@ class ScheduleServiceTests {
     private final SchoolYearRepository schoolYearRepository;
     private final SemesterRepository semesterRepository;
     private final SectionRepository sectionRepository;
+    private final CurriculumRepository curriculumRepository;
+    private final CurriculumCourseRepository curriculumCourseRepository;
 
     private Section section;
     private Section otherSection;
+    private Curriculum curriculum;
     private Course course;
     private Faculty faculty;
     private Faculty otherFaculty;
@@ -80,7 +89,9 @@ class ScheduleServiceTests {
             RoomRepository roomRepository,
             SchoolYearRepository schoolYearRepository,
             SemesterRepository semesterRepository,
-            SectionRepository sectionRepository
+            SectionRepository sectionRepository,
+            CurriculumRepository curriculumRepository,
+            CurriculumCourseRepository curriculumCourseRepository
     ) {
         this.scheduleService = scheduleService;
         this.departmentRepository = departmentRepository;
@@ -91,6 +102,8 @@ class ScheduleServiceTests {
         this.schoolYearRepository = schoolYearRepository;
         this.semesterRepository = semesterRepository;
         this.sectionRepository = sectionRepository;
+        this.curriculumRepository = curriculumRepository;
+        this.curriculumCourseRepository = curriculumCourseRepository;
     }
 
     @BeforeEach
@@ -134,10 +147,28 @@ class ScheduleServiceTests {
         schoolYear = schoolYearRepository.save(schoolYear);
 
         semester = new Semester();
-        semester.setName("TERM-" + suffix);
+        semester.setName("TERM" + suffix);
         semester.setSortOrder(1);
         semester.setActive(true);
         semester = semesterRepository.save(semester);
+
+        curriculum = new Curriculum();
+        curriculum.setProgram(program);
+        curriculum.setCurriculumCode("CUR-" + suffix);
+        curriculum.setCurriculumName("Schedule Curriculum");
+        curriculum.setEffectiveSchoolYear("2026-2027");
+        curriculum.setVersion("1");
+        curriculum.setStatus(CurriculumStatus.ACTIVE);
+        curriculum = curriculumRepository.save(curriculum);
+
+        CurriculumCourse curriculumCourse = new CurriculumCourse();
+        curriculumCourse.setCurriculum(curriculum);
+        curriculumCourse.setYearLevel(1);
+        curriculumCourse.setSemester(semester.getName());
+        curriculumCourse.setCourse(course);
+        curriculumCourse.setSortOrder(1);
+        curriculumCourse.setRequiredStatus(RequiredStatus.REQUIRED);
+        curriculumCourseRepository.save(curriculumCourse);
 
         section = section("BSIT-1A-" + suffix, program);
         otherSection = section("BSIT-1B-" + suffix, program);
@@ -253,8 +284,6 @@ class ScheduleServiceTests {
                 course.getId(),
                 facultyId,
                 roomId,
-                schoolYear.getId(),
-                semester.getId(),
                 40,
                 status,
                 List.of(meeting)
@@ -291,6 +320,7 @@ class ScheduleServiceTests {
         Section section = new Section();
         section.setSectionCode(sectionCode);
         section.setProgram(program);
+        section.setCurriculum(curriculum);
         section.setSchoolYear(schoolYear);
         section.setSemester(semester);
         section.setYearLevel(1);

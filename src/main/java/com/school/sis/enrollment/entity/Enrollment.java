@@ -49,6 +49,9 @@ public class Enrollment extends AuditableEntity {
     @JoinColumn(name = "semester_id", nullable = false)
     private Semester semester;
 
+    @Column(name = "year_level", nullable = false)
+    private int yearLevel;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EnrollmentStatus status = EnrollmentStatus.DRAFT;
@@ -74,6 +77,8 @@ public class Enrollment extends AuditableEntity {
     public void setSchoolYear(SchoolYear schoolYear) { this.schoolYear = schoolYear; }
     public Semester getSemester() { return semester; }
     public void setSemester(Semester semester) { this.semester = semester; }
+    public int getYearLevel() { return yearLevel; }
+    public void setYearLevel(int yearLevel) { this.yearLevel = yearLevel; }
     public EnrollmentStatus getStatus() { return status; }
     public void setStatus(EnrollmentStatus status) { this.status = status; }
     public String getRemarks() { return remarks; }

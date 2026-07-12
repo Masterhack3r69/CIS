@@ -11,9 +11,7 @@ import com.school.sis.curriculum.entity.Curriculum;
 import com.school.sis.curriculum.repository.CurriculumRepository;
 import com.school.sis.grade.service.GradeService;
 import com.school.sis.setup.entity.Program;
-import com.school.sis.setup.entity.Section;
 import com.school.sis.setup.repository.ProgramRepository;
-import com.school.sis.setup.repository.SectionRepository;
 import com.school.sis.student.dto.DocumentVerificationRequest;
 import com.school.sis.student.dto.StudentAcademicRecordsResponse;
 import com.school.sis.student.dto.StudentAcademicRequest;
@@ -71,7 +69,6 @@ public class StudentService {
     private final StudentDocumentRepository documentRepository;
     private final ProgramRepository programRepository;
     private final CurriculumRepository curriculumRepository;
-    private final SectionRepository sectionRepository;
     private final UserRepository userRepository;
     private final GradeService gradeService;
     private final AuditService auditService;
@@ -85,7 +82,6 @@ public class StudentService {
             StudentDocumentRepository documentRepository,
             ProgramRepository programRepository,
             CurriculumRepository curriculumRepository,
-            SectionRepository sectionRepository,
             UserRepository userRepository,
             GradeService gradeService,
             AuditService auditService,
@@ -98,7 +94,6 @@ public class StudentService {
         this.documentRepository = documentRepository;
         this.programRepository = programRepository;
         this.curriculumRepository = curriculumRepository;
-        this.sectionRepository = sectionRepository;
         this.userRepository = userRepository;
         this.gradeService = gradeService;
         this.auditService = auditService;
@@ -239,9 +234,6 @@ public class StudentService {
         if (!curriculum.getProgram().getId().equals(program.getId())) {
             throw new BusinessRuleException("Curriculum does not belong to the selected program");
         }
-        Section section = academic.sectionId() == null ? null : sectionRepository.findById(academic.sectionId())
-                .orElseThrow(() -> new NotFoundException("Section not found"));
-
         student.setStudentNumber(personal.studentNumber());
         student.setFirstName(personal.firstName());
         student.setMiddleName(personal.middleName());
@@ -258,8 +250,6 @@ public class StudentService {
         student.setProgram(program);
         student.setCurriculum(curriculum);
         student.setYearLevel(academic.yearLevel());
-        student.setSemester(academic.semester());
-        student.setSection(section);
         student.setDateAdmitted(academic.dateAdmitted());
         student.setSchoolYearAdmitted(academic.schoolYearAdmitted());
         student.setClassification(academic.classification());
@@ -388,7 +378,6 @@ public class StudentService {
             }
             if (criteria.programId() != null) predicate = cb.and(predicate, cb.equal(root.get("program").get("id"), criteria.programId()));
             if (criteria.yearLevel() != null) predicate = cb.and(predicate, cb.equal(root.get("yearLevel"), criteria.yearLevel()));
-            if (criteria.sectionId() != null) predicate = cb.and(predicate, cb.equal(root.get("section").get("id"), criteria.sectionId()));
             if (criteria.status() != null) predicate = cb.and(predicate, cb.equal(root.get("status"), criteria.status()));
             if (criteria.schoolYearAdmitted() != null && !criteria.schoolYearAdmitted().isBlank()) {
                 predicate = cb.and(predicate, cb.equal(root.get("schoolYearAdmitted"), criteria.schoolYearAdmitted()));
@@ -423,8 +412,6 @@ public class StudentService {
                 student.getProgram().getId(),
                 student.getProgram().getProgramCode(),
                 student.getYearLevel(),
-                student.getSection() == null ? null : student.getSection().getId(),
-                student.getSection() == null ? null : student.getSection().getSectionCode(),
                 student.getStatus(),
                 student.getSchoolYearAdmitted()
         );
@@ -481,9 +468,7 @@ public class StudentService {
 
     private StudentAcademicResponse toAcademicResponse(Student student) {
         return new StudentAcademicResponse(student.getProgram().getId(), student.getProgram().getProgramCode(),
-                student.getCurriculum().getId(), student.getCurriculum().getCurriculumCode(), student.getYearLevel(),
-                student.getSemester(), student.getSection() == null ? null : student.getSection().getId(),
-                student.getSection() == null ? null : student.getSection().getSectionCode(), student.getDateAdmitted(),
+                student.getCurriculum().getId(), student.getCurriculum().getCurriculumCode(), student.getYearLevel(), student.getDateAdmitted(),
                 student.getSchoolYearAdmitted(), student.getClassification(), student.getAcademicStatus());
     }
 

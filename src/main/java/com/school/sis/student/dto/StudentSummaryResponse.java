@@ -12,8 +12,6 @@ public record StudentSummaryResponse(
         UUID programId,
         String programCode,
         int yearLevel,
-        UUID sectionId,
-        String sectionCode,
         StudentStatus status,
         String schoolYearAdmitted
 ) {

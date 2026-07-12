@@ -316,8 +316,9 @@ public class ReportService {
         pdf.field("Program", student.getProgram().getProgramCode() + " - " + student.getProgram().getProgramName());
         pdf.field("Curriculum", student.getCurriculum().getCurriculumCode());
         pdf.field("Year Level", student.getYearLevel());
-        pdf.field("Semester", student.getSemester());
-        pdf.field("Section", student.getSection() == null ? "" : student.getSection().getSectionCode());
+        Enrollment latestEnrollment = enrollmentRepository.findFirstByStudentIdOrderBySchoolYearSchoolYearDescSemesterSortOrderDesc(student.getId()).orElse(null);
+        pdf.field("Semester", latestEnrollment != null ? latestEnrollment.getSemester().getName() : "");
+        pdf.field("Section", (latestEnrollment != null && latestEnrollment.getSection() != null) ? latestEnrollment.getSection().getSectionCode() : "");
         pdf.field("Academic Status", student.getAcademicStatus());
     }
 

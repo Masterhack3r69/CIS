@@ -8,6 +8,7 @@ public record EnrollmentRequest(
         @NotNull UUID studentId,
         @NotNull UUID schoolYearId,
         @NotNull UUID semesterId,
+        @NotNull Integer yearLevel,
         UUID sectionId,
         String remarks
 ) {

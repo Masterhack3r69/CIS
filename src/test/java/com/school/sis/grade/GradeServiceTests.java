@@ -170,10 +170,8 @@ class GradeServiceTests {
         roomTwo = room("GRD-R2-" + suffix);
         schoolYear = schoolYear("GRD-2026-" + suffix);
         nextSchoolYear = schoolYear("GRD-2027-" + suffix);
-        semester = semester("GRD-FIRST-" + suffix, 1);
-        nextSemester = semester("GRD-SECOND-" + suffix, 2);
-        section = section("GRD-1A-" + suffix, schoolYear, semester);
-        nextSection = section("GRD-1B-" + suffix, nextSchoolYear, nextSemester);
+        semester = semester("GRDFIRST" + suffix, 1);
+        nextSemester = semester("GRDSECOND" + suffix, 2);
 
         curriculum = new Curriculum();
         curriculum.setProgram(program);
@@ -184,9 +182,19 @@ class GradeServiceTests {
         curriculum.setStatus(CurriculumStatus.ACTIVE);
         curriculum = curriculumRepository.save(curriculum);
         curriculumCourse(prerequisiteCourse, 1);
-        CurriculumCourse advanced = curriculumCourse(advancedCourse, 2);
+        CurriculumCourse advanced = new CurriculumCourse();
+        advanced.setCurriculum(curriculum);
+        advanced.setYearLevel(1);
+        advanced.setSemester(nextSemester.getName());
+        advanced.setCourse(advancedCourse);
+        advanced.setSortOrder(2);
+        advanced.setRequiredStatus(RequiredStatus.REQUIRED);
+        advanced = curriculumCourseRepository.save(advanced);
         advanced.getPrerequisites().add(prerequisiteCourse);
         curriculumCourseRepository.save(advanced);
+
+        section = section("GRD-1A-" + suffix, schoolYear, semester);
+        nextSection = section("GRD-1B-" + suffix, nextSchoolYear, nextSemester);
 
         student = student("GRD-S1-" + suffix, "First");
         otherStudent = student("GRD-S2-" + suffix, "Second");
@@ -326,7 +334,7 @@ class GradeServiceTests {
     }
 
     private EnrollmentResponse enrollment(Student targetStudent, SchoolYear targetYear, Semester targetSemester, Section targetSection) {
-        return enrollmentService.create(new EnrollmentRequest(targetStudent.getId(), targetYear.getId(), targetSemester.getId(), targetSection.getId(), null));
+        return enrollmentService.create(new EnrollmentRequest(targetStudent.getId(), targetYear.getId(), targetSemester.getId(), targetStudent.getYearLevel(), targetSection.getId(), null));
     }
 
     private ScheduleResponse schedule(Course course, Section targetSection, Room room, DayOfWeek day, String start, String end) {
@@ -335,8 +343,6 @@ class GradeServiceTests {
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
-                targetSection.getSchoolYear().getId(),
-                targetSection.getSemester().getId(),
                 40,
                 ScheduleStatus.ACTIVE,
                 List.of(new ScheduleMeetingRequest(day, LocalTime.parse(start), LocalTime.parse(end)))
@@ -397,6 +403,7 @@ class GradeServiceTests {
         Section section = new Section();
         section.setSectionCode(code);
         section.setProgram(program);
+        section.setCurriculum(curriculum);
         section.setSchoolYear(targetYear);
         section.setSemester(targetSemester);
         section.setYearLevel(1);
@@ -415,8 +422,6 @@ class GradeServiceTests {
         student.setProgram(program);
         student.setCurriculum(curriculum);
         student.setYearLevel(1);
-        student.setSemester(semester.getName());
-        student.setSection(section);
         student.setDateAdmitted(LocalDate.of(2026, 6, 1));
         student.setSchoolYearAdmitted("2026-2027");
         student.setClassification(StudentClassification.REGULAR);

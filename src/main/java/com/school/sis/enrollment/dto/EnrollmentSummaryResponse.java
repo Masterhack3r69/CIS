@@ -12,6 +12,7 @@ public record EnrollmentSummaryResponse(
         String studentName,
         UUID programId,
         String programCode,
+        int yearLevel,
         UUID sectionId,
         String sectionCode,
         UUID schoolYearId,

@@ -9,6 +9,8 @@ public record SectionResponse(
         String sectionCode,
         UUID programId,
         String programCode,
+        UUID curriculumId,
+        String curriculumCode,
         UUID schoolYearId,
         String schoolYear,
         UUID semesterId,

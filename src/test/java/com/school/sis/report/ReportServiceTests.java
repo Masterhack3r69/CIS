@@ -219,19 +219,10 @@ class ReportServiceTests {
         schoolYear = schoolYearRepository.save(schoolYear);
 
         semester = new Semester();
-        semester.setName("REP-FIRST-" + suffix);
+        semester.setName("REPFIRST" + suffix);
         semester.setSortOrder(1);
         semester.setActive(true);
         semester = semesterRepository.save(semester);
-
-        section = new Section();
-        section.setSectionCode("REP-1A-" + suffix);
-        section.setProgram(program);
-        section.setSchoolYear(schoolYear);
-        section.setSemester(semester);
-        section.setYearLevel(1);
-        section.setStatus(ActiveStatus.ACTIVE);
-        section = sectionRepository.save(section);
 
         curriculum = new Curriculum();
         curriculum.setProgram(program);
@@ -241,6 +232,16 @@ class ReportServiceTests {
         curriculum.setVersion("1");
         curriculum.setStatus(CurriculumStatus.ACTIVE);
         curriculum = curriculumRepository.save(curriculum);
+
+        section = new Section();
+        section.setSectionCode("REP-1A-" + suffix);
+        section.setProgram(program);
+        section.setCurriculum(curriculum);
+        section.setSchoolYear(schoolYear);
+        section.setSemester(semester);
+        section.setYearLevel(1);
+        section.setStatus(ActiveStatus.ACTIVE);
+        section = sectionRepository.save(section);
 
         CurriculumCourse curriculumCourse = new CurriculumCourse();
         curriculumCourse.setCurriculum(curriculum);
@@ -261,8 +262,6 @@ class ReportServiceTests {
         student.setProgram(program);
         student.setCurriculum(curriculum);
         student.setYearLevel(1);
-        student.setSemester(semester.getName());
-        student.setSection(section);
         student.setDateAdmitted(LocalDate.of(2026, 6, 1));
         student.setSchoolYearAdmitted("2026-2027");
         student.setClassification(StudentClassification.REGULAR);
@@ -274,13 +273,11 @@ class ReportServiceTests {
                 course.getId(),
                 faculty.getId(),
                 room.getId(),
-                schoolYear.getId(),
-                semester.getId(),
                 40,
                 ScheduleStatus.ACTIVE,
                 List.of(new ScheduleMeetingRequest(DayOfWeek.MONDAY, LocalTime.parse("09:00"), LocalTime.parse("10:00")))
         ));
-        enrollment = enrollmentService.create(new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), section.getId(), null));
+        enrollment = enrollmentService.create(new EnrollmentRequest(student.getId(), schoolYear.getId(), semester.getId(), student.getYearLevel(), section.getId(), null));
         enrollmentService.addSubject(enrollment.id(), new EnrollmentSubjectRequest(schedule.id()));
         enrollment = enrollmentService.confirm(enrollment.id());
 

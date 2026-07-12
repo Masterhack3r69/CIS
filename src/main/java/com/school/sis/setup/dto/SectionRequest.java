@@ -10,6 +10,7 @@ import java.util.UUID;
 public record SectionRequest(
         @NotBlank String sectionCode,
         @NotNull UUID programId,
+        @NotNull UUID curriculumId,
         @NotNull UUID schoolYearId,
         @NotNull UUID semesterId,
         @Min(1) int yearLevel,

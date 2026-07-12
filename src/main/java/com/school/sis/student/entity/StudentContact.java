@@ -47,11 +47,6 @@ public class StudentContact extends AuditableEntity {
     private String permanentBarangayCode;
     private String permanentBarangayName;
     private String permanentZipCode;
-    private String province;
-    @Column(name = "city_municipality")
-    private String cityMunicipality;
-    private String barangay;
-    private String zipCode;
     private String emergencyContactName;
     private String emergencyContactNumber;
     private String emergencyContactRelationship;
@@ -106,14 +101,6 @@ public class StudentContact extends AuditableEntity {
     public void setPermanentBarangayName(String value) { this.permanentBarangayName = value; }
     public String getPermanentZipCode() { return permanentZipCode; }
     public void setPermanentZipCode(String value) { this.permanentZipCode = value; }
-    public String getProvince() { return province; }
-    public void setProvince(String province) { this.province = province; }
-    public String getCityMunicipality() { return cityMunicipality; }
-    public void setCityMunicipality(String cityMunicipality) { this.cityMunicipality = cityMunicipality; }
-    public String getBarangay() { return barangay; }
-    public void setBarangay(String barangay) { this.barangay = barangay; }
-    public String getZipCode() { return zipCode; }
-    public void setZipCode(String zipCode) { this.zipCode = zipCode; }
     public String getEmergencyContactName() { return emergencyContactName; }
     public void setEmergencyContactName(String emergencyContactName) { this.emergencyContactName = emergencyContactName; }
     public String getEmergencyContactNumber() { return emergencyContactNumber; }

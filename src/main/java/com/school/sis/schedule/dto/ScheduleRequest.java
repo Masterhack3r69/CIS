@@ -14,9 +14,7 @@ public record ScheduleRequest(
         @NotNull UUID courseId,
         @NotNull UUID facultyId,
         @NotNull UUID roomId,
-        @NotNull UUID schoolYearId,
-        @NotNull UUID semesterId,
-        @Positive Integer capacity,
+        @NotNull @Positive Integer capacity,
         @NotNull ScheduleStatus status,
         @NotNull @Size(min = 1) List<@Valid ScheduleMeetingRequest> meetings
 ) {
